@@ -12,6 +12,7 @@ function onOpen() {
   if (access.permissions.search) menu.addItem('3. Поиск товара', 'showSearchForm');
   if (access.permissions.storekeeperDashboard) menu.addItem('4. Дашборд кладовщика', 'showStorekeeperDashboard');
   if (access.permissions.managementDashboard) menu.addItem('5. Дашборд руководителя', 'showManagementDashboard');
+  if (access.permissions.managementDashboard) menu.addItem('6. Автопарк и поездки', 'showFleetTripsDashboard');
   if (access.permissions.manageAccess) {
     menu.addSeparator();
     menu.addItem('6. Управление доступом', 'showAccessAdminPanel');
@@ -644,6 +645,10 @@ function openQuickManagementDashboard() {
   showManagementDashboard();
 }
 
+function openQuickFleetDashboard() {
+  showFleetTripsDashboard();
+}
+
 function openQuickRefreshAll() {
   requirePermission_('refreshAll', 'обновление данных');
   refreshAll();
@@ -659,6 +664,14 @@ function showManagementDashboard() {
     .setWidth(1400)
     .setHeight(900);
   SpreadsheetApp.getUi().showModalDialog(html, 'Дашборд руководителя');
+}
+
+function showFleetTripsDashboard() {
+  requirePermission_('managementDashboard', 'панель автопарка и поездок');
+  const html = HtmlService.createHtmlOutputFromFile('FleetTripsDashboard')
+    .setWidth(1480)
+    .setHeight(920);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Автопарк и поездки');
 }
 
 function showInventoryForm() {
@@ -3147,4 +3160,262 @@ function refreshAll() {
   refreshBalances();
   refreshAssigned();
   refreshDashboard();
+}
+
+/**
+ * =========================
+ * FLEET & TRIPS DASHBOARD
+ * =========================
+ */
+function ensureFleetTripsSheets_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  const specs = [
+    {
+      name: 'Автопарк',
+      headers: ['ID', 'Автомобиль', 'Госномер', 'Водитель', 'Пробег', 'Ближайшее ТО', 'Комментарий', 'Создано', 'Кем']
+    },
+    {
+      name: 'ТО и ремонты',
+      headers: ['ID', 'Дата', 'Автомобиль', 'Тип работы', 'Пробег', 'Что делалось', 'Сумма', 'Комментарий', 'Следующее ТО', 'Создано', 'Кем']
+    },
+    {
+      name: 'Поездки автопарк',
+      headers: ['ID', 'Дата', 'Автомобиль', 'Сотрудник', 'Тип поездки', 'Объект', 'Маршрут', 'Цель', 'Километраж', 'Расходы', 'Комментарий', 'Создано', 'Кем']
+    }
+  ];
+
+  specs.forEach(function (spec) {
+    let sh = ss.getSheetByName(spec.name);
+    if (!sh) sh = ss.insertSheet(spec.name);
+    const lastCol = spec.headers.length;
+    const header = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+    const isHeaderEmpty = header.every(function (v) { return String(v || '').trim() === ''; });
+    if (isHeaderEmpty) {
+      sh.getRange(1, 1, 1, lastCol).setValues([spec.headers]);
+      formatHeader_(sh, 1, 1, 1, lastCol);
+      sh.setFrozenRows(1);
+      autoResize_(sh, 1, lastCol);
+    }
+  });
+}
+
+function toIsoDate_(value) {
+  if (!value) return '';
+  const d = value instanceof Date ? value : new Date(value);
+  if (!d || isNaN(d.getTime())) return '';
+  return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+}
+
+function getFleetTripsInitData() {
+  requirePermission_('managementDashboard', 'данные панели автопарка и поездок');
+  ensureFleetTripsSheets_();
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const fleetSh = ss.getSheetByName('Автопарк');
+  const serviceSh = ss.getSheetByName('ТО и ремонты');
+  const tripSh = ss.getSheetByName('Поездки автопарк');
+  const dir = ss.getSheetByName('Справочник');
+
+  const fleetRows = fleetSh.getLastRow() >= 2 ? fleetSh.getRange(2, 1, fleetSh.getLastRow() - 1, 9).getValues() : [];
+  const serviceRows = serviceSh.getLastRow() >= 2 ? serviceSh.getRange(2, 1, serviceSh.getLastRow() - 1, 11).getValues() : [];
+  const tripRows = tripSh.getLastRow() >= 2 ? tripSh.getRange(2, 1, tripSh.getLastRow() - 1, 13).getValues() : [];
+
+  const objects = dir ? getColumnValues(dir, 1, 2) : [];
+  const employees = dir ? getEmployees_() : [];
+
+  const servicesByCar = {};
+  serviceRows.forEach(function (r) {
+    const car = String(r[2] || '').trim();
+    if (!car) return;
+    if (!servicesByCar[car]) servicesByCar[car] = [];
+    servicesByCar[car].push({
+      id: String(r[0] || ''),
+      date: toIsoDate_(r[1]),
+      car: car,
+      workType: String(r[3] || '').trim(),
+      mileage: Number(r[4]) || 0,
+      works: String(r[5] || '').trim(),
+      amount: Number(r[6]) || 0,
+      comment: String(r[7] || '').trim(),
+      nextMaintenance: Number(r[8]) || 0
+    });
+  });
+
+  const trips = tripRows.map(function (r) {
+    return {
+      id: String(r[0] || ''),
+      date: toIsoDate_(r[1]),
+      car: String(r[2] || '').trim(),
+      employee: String(r[3] || '').trim(),
+      tripType: String(r[4] || '').trim(),
+      objectName: String(r[5] || '').trim(),
+      route: String(r[6] || '').trim(),
+      purpose: String(r[7] || '').trim(),
+      mileage: Number(r[8]) || 0,
+      cost: Number(r[9]) || 0,
+      comment: String(r[10] || '').trim()
+    };
+  });
+
+  const cars = fleetRows.map(function (r) {
+    const carName = String(r[1] || '').trim();
+    const list = servicesByCar[carName] || [];
+    list.sort(function (a, b) { return String(b.date).localeCompare(String(a.date)); });
+    const lastService = list[0] || null;
+    const totalAmount = list.reduce(function (sum, row) { return sum + (Number(row.amount) || 0); }, 0);
+    const mileage = Number(r[4]) || 0;
+    const nextTO = Number(r[5]) || 0;
+    let status = 'В норме';
+    if (nextTO && mileage >= nextTO) status = 'Просрочено';
+    else if (nextTO && nextTO - mileage <= 3000) status = 'Скоро ТО';
+
+    return {
+      id: String(r[0] || ''),
+      name: carName,
+      plate: String(r[2] || '').trim(),
+      driver: String(r[3] || '').trim(),
+      mileage: mileage,
+      nextMaintenance: nextTO,
+      comment: String(r[6] || '').trim(),
+      lastServiceDate: lastService ? lastService.date : '',
+      totalMaintenanceCost: totalAmount,
+      worksDone: lastService ? lastService.works : '',
+      status: status
+    };
+  });
+
+  const history = serviceRows.map(function (r) {
+    return {
+      id: String(r[0] || ''),
+      date: toIsoDate_(r[1]),
+      car: String(r[2] || '').trim(),
+      workType: String(r[3] || '').trim(),
+      works: String(r[5] || '').trim(),
+      mileage: Number(r[4]) || 0,
+      amount: Number(r[6]) || 0,
+      comment: String(r[7] || '').trim()
+    };
+  });
+
+  return {
+    employees: employees,
+    objects: objects,
+    cars: cars,
+    services: serviceRows.length ? Object.keys(servicesByCar).reduce(function (acc, car) { return acc.concat(servicesByCar[car]); }, []) : [],
+    trips: trips,
+    history: history
+  };
+}
+
+function saveFleetVehicle(payload) {
+  requirePermission_('managementDashboard', 'добавление автомобиля');
+  ensureFleetTripsSheets_();
+
+  const car = String(payload && payload.name || '').trim();
+  const plate = String(payload && payload.plate || '').trim();
+  const driver = String(payload && payload.driver || '').trim();
+  const mileage = Number(payload && payload.mileage);
+  const nextTO = Number(payload && payload.nextMaintenance);
+  const comment = String(payload && payload.comment || '').trim();
+
+  if (!car) throw new Error('Укажи название автомобиля.');
+  if (!plate) throw new Error('Укажи госномер.');
+  if (!isFinite(mileage) || mileage < 0) throw new Error('Пробег должен быть числом 0 или больше.');
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName('Автопарк');
+  const now = new Date();
+  const user = getCurrentUserEmail_();
+  const id = 'CAR-' + Utilities.getUuid().slice(0, 8).toUpperCase();
+
+  sh.appendRow([id, car, plate, driver, mileage, isFinite(nextTO) ? nextTO : '', comment, now, user]);
+  return 'Автомобиль добавлен: ' + car;
+}
+
+function saveFleetService(payload) {
+  requirePermission_('managementDashboard', 'добавление ТО/ремонта');
+  ensureFleetTripsSheets_();
+
+  const car = String(payload && payload.car || '').trim();
+  const date = payload && payload.date ? new Date(payload.date) : new Date();
+  const workType = String(payload && payload.workType || '').trim();
+  const mileage = Number(payload && payload.mileage);
+  const works = String(payload && payload.works || '').trim();
+  const amount = Number(payload && payload.amount);
+  const comment = String(payload && payload.comment || '').trim();
+  const nextTO = Number(payload && payload.nextMaintenance);
+
+  if (!car) throw new Error('Выбери автомобиль.');
+  if (!workType) throw new Error('Укажи тип работы.');
+  if (!isFinite(mileage) || mileage < 0) throw new Error('Пробег должен быть числом 0 или больше.');
+  if (!works) throw new Error('Опиши, что делалось.');
+  if (!isFinite(amount) || amount < 0) throw new Error('Сумма должна быть числом 0 или больше.');
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName('ТО и ремонты');
+  const fleet = ss.getSheetByName('Автопарк');
+  const now = new Date();
+  const user = getCurrentUserEmail_();
+  const id = 'SRV-' + Utilities.getUuid().slice(0, 8).toUpperCase();
+
+  sh.appendRow([id, date, car, workType, mileage, works, amount, comment, isFinite(nextTO) ? nextTO : '', now, user]);
+
+  if (fleet.getLastRow() >= 2) {
+    const fleetData = fleet.getRange(2, 1, fleet.getLastRow() - 1, 9).getValues();
+    for (var i = 0; i < fleetData.length; i++) {
+      if (String(fleetData[i][1] || '').trim() !== car) continue;
+      const row = i + 2;
+      const currentMileage = Number(fleetData[i][4]) || 0;
+      if (mileage > currentMileage) fleet.getRange(row, 5).setValue(mileage);
+      if (isFinite(nextTO) && nextTO > 0) fleet.getRange(row, 6).setValue(nextTO);
+      break;
+    }
+  }
+
+  return 'ТО/ремонт сохранен для: ' + car;
+}
+
+function saveFleetTrip(payload) {
+  requirePermission_('managementDashboard', 'добавление поездки');
+  ensureFleetTripsSheets_();
+
+  const date = payload && payload.date ? new Date(payload.date) : new Date();
+  const car = String(payload && payload.car || '').trim();
+  const employee = String(payload && payload.employee || '').trim();
+  const tripType = String(payload && payload.tripType || '').trim();
+  const objectName = String(payload && payload.objectName || '').trim();
+  const route = String(payload && payload.route || '').trim();
+  const purpose = String(payload && payload.purpose || '').trim();
+  const mileage = Number(payload && payload.mileage);
+  const cost = Number(payload && payload.cost);
+  const comment = String(payload && payload.comment || '').trim();
+
+  if (!car) throw new Error('Выбери автомобиль.');
+  if (!employee) throw new Error('Укажи сотрудника.');
+  if (!tripType) throw new Error('Укажи тип поездки.');
+  if (!objectName && !route) throw new Error('Заполни объект или маршрут.');
+  if (!isFinite(mileage) || mileage <= 0) throw new Error('Километраж должен быть больше 0.');
+  if (!isFinite(cost) || cost < 0) throw new Error('Расходы должны быть числом 0 или больше.');
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName('Поездки автопарк');
+  const fleet = ss.getSheetByName('Автопарк');
+  const now = new Date();
+  const user = getCurrentUserEmail_();
+  const id = 'TRP-' + Utilities.getUuid().slice(0, 8).toUpperCase();
+
+  sh.appendRow([id, date, car, employee, tripType, objectName, route, purpose, mileage, cost, comment, now, user]);
+
+  if (fleet.getLastRow() >= 2) {
+    const fleetData = fleet.getRange(2, 1, fleet.getLastRow() - 1, 9).getValues();
+    for (var i = 0; i < fleetData.length; i++) {
+      if (String(fleetData[i][1] || '').trim() !== car) continue;
+      const currentMileage = Number(fleetData[i][4]) || 0;
+      fleet.getRange(i + 2, 5).setValue(currentMileage + mileage);
+      break;
+    }
+  }
+
+  return 'Поездка сохранена.';
 }
