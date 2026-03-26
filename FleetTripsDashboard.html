@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    :root {
+      --bg: #f2f5fb;
+      --card: #fff;
+      --line: #dfe5f2;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #3b82f6;
+      --ok: #16a34a;
+      --warn: #ea580c;
+      --bad: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      padding: 18px;
+    }
+    .header-card, .panel, .tile, .card, .modal-content {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.05);
+    }
+    .header-card { padding: 18px 20px; }
+    .title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    h1 { margin: 0; font-size: 28px; }
+    .desc { margin: 6px 0 0; color: var(--muted); }
+    .btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .cards { margin-top: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .tile { padding: 14px; }
+    .tile .k { color: var(--muted); font-size: 12px; }
+    .tile .v { font-size: 34px; font-weight: 700; margin-top: 6px; }
+    .tabs { display: flex; gap: 10px; margin: 14px 0; }
+    .tab {
+      border: 1px solid #bdd3ff;
+      border-radius: 999px;
+      background: #fff;
+      color: #1d4ed8;
+      padding: 9px 16px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tab.active { background: #eaf2ff; }
+    .panel { padding: 16px; }
+    .section-head { display:flex; justify-content: space-between; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .section-title { font-size: 30px; margin: 0; }
+    .section-sub { margin: 4px 0 0; color: var(--muted); }
+    .filters { display:flex; flex-wrap:wrap; gap: 8px; }
+    input, select, textarea {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font: inherit;
+      width: 100%;
+      background: #fff;
+    }
+    .f { width: 230px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { border-bottom: 1px solid #e8edf8; padding: 10px; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { background: #eef3ff; border: 1px solid #dbe8ff; border-radius: 999px; padding: 3px 8px; font-size: 12px; }
+    .status { padding: 4px 8px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+    .st-ok { background: #eaf8ef; color: var(--ok); }
+    .st-warn { background: #fff3e8; color: var(--warn); }
+    .st-bad { background: #ffecec; color: var(--bad); }
+    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+    .card { padding: 14px; }
+    .card h3 { margin: 0 0 8px; }
+    .progress { height: 10px; border-radius: 10px; background: #edf2ff; overflow: hidden; }
+    .bar { height: 100%; background: #3b82f6; border-radius: 10px; }
+    .item { margin-bottom: 10px; }
+    .small { color: var(--muted); font-size: 12px; }
+    .hidden { display:none; }
+    .empty { text-align: center; color: var(--muted); padding: 24px; }
+    .toast { position: fixed; right: 20px; bottom: 20px; padding: 10px 12px; border-radius: 10px; color:#fff; display:none; z-index: 9; }
+    .toast.ok { background: #15803d; }
+    .toast.err { background: #b91c1c; }
+    .modal {
+      position: fixed; inset: 0; background: rgba(2,6,23,.45);
+      display:none; align-items: center; justify-content: center; z-index: 10;
+    }
+    .modal-content { width: 660px; max-width: calc(100% - 24px); padding: 16px; }
+    .form-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .row { display:flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="header-card">
+    <div class="title-row">
+      <div>
+        <h1>Автопарк и поездки</h1>
+        <p class="desc">Единая панель управления автомобилями, обслуживанием и выездами на объекты.</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" onclick="openModal('car')">Добавить автомобиль</button>
+        <button class="btn" onclick="openModal('service')">Добавить ТО / ремонт</button>
+        <button class="btn primary" onclick="openModal('trip')">Добавить поездку</button>
+      </div>
+    </div>
+    <div class="cards">
+      <div class="tile"><div class="k">Автомобилей в учете</div><div id="kCars" class="v">0</div></div>
+      <div class="tile"><div class="k">Расходы на обслуживание</div><div id="kServ" class="v">₽ 0</div></div>
+      <div class="tile"><div class="k">Количество поездок</div><div id="kTrips" class="v">0</div></div>
+      <div class="tile"><div class="k">Общий пробег</div><div id="kMileage" class="v">0 км</div></div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="maintenance">Обслуживание</button>
+    <button class="tab" data-tab="trips">Поездки</button>
+    <button class="tab" data-tab="history">История работ</button>
+  </div>
+
+  <div id="maintenance" class="panel">
+    <div class="section-head">
+      <div><h2 class="section-title">Реестр обслуживания</h2><p class="section-sub">Контроль состояния автомобилей, расходов и плановых ТО.</p></div>
+      <div class="filters">
+        <input id="carSearch" class="f" placeholder="Поиск по авто / номеру" oninput="renderMaintenance()">
+        <select id="statusFilter" class="f" onchange="renderMaintenance()">
+          <option value="">Все статусы</option><option>В норме</option><option>Скоро ТО</option><option>Просрочено</option>
+        </select>
+      </div>
+    </div>
+    <div style="overflow:auto;">
+      <table>
+        <thead><tr><th>Автомобиль</th><th>Гос. номер</th><th>Последнее обслуживание</th><th>Пробег</th><th>Сумма затрат</th><th>Что делалось</th><th>Следующее ТО</th><th>Статус</th></tr></thead>
+        <tbody id="maintenanceRows"></tbody>
+      </table>
+    </div>
+    <div class="grid-2">
+      <div class="card"><h3>Структура затрат</h3><div id="costStructure"></div></div>
+      <div class="card"><h3>Ближайшие задачи</h3><div id="upcomingTasks"></div></div>
+    </div>
+  </div>
+
+  <div id="trips" class="panel hidden">
+    <div class="section-head">
+      <div><h2 class="section-title">Журнал поездок</h2><p class="section-sub">Поездки на объекты, маршруты, километраж и расходы.</p></div>
+      <div class="filters"><input id="tripSearch" class="f" placeholder="Объект / сотрудник / авто" oninput="renderTrips()"></div>
+    </div>
+    <div style="overflow:auto;">
+      <table>
+        <thead><tr><th>Дата</th><th>Объект</th><th>Маршрут</th><th>Автомобиль / водитель</th><th>Цель поездки</th><th>Км</th><th>Расходы</th><th>Комментарий</th></tr></thead>
+        <tbody id="tripRows"></tbody>
+      </table>
+    </div>
+    <div class="grid-2">
+      <div class="card"><h3>Частые направления</h3><div id="frequentDestinations"></div></div>
+      <div class="card"><h3>Сводка по поездкам</h3><div id="tripStats"></div></div>
+    </div>
+  </div>
+
+  <div id="history" class="panel hidden">
+    <div class="section-head"><div><h2 class="section-title">История работ</h2><p class="section-sub">Объединенный журнал ТО и ремонтов для анализа.</p></div></div>
+    <div style="overflow:auto;">
+      <table>
+        <thead><tr><th>Дата</th><th>Автомобиль</th><th>Тип работы</th><th>Что делалось</th><th>Пробег</th><th>Сумма</th><th>Комментарий</th></tr></thead>
+        <tbody id="historyRows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <h3 id="modalTitle"></h3>
+      <form id="form" onsubmit="submitModal(event)"></form>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const state = { cars: [], trips: [], history: [], services: [], employees: [], objects: [], tab: 'maintenance', modal: null };
+
+    const fmtNum = n => (Number(n) || 0).toLocaleString('ru-RU');
+    const fmtMoney = n => '₽ ' + fmtNum(n);
+
+    function showToast(text, ok) {
+      const t = document.getElementById('toast');
+      t.textContent = text;
+      t.className = 'toast ' + (ok ? 'ok' : 'err');
+      t.style.display = 'block';
+      setTimeout(() => t.style.display = 'none', 2600);
+    }
+
+    function switchTab(tab) {
+      state.tab = tab;
+      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      ['maintenance', 'trips', 'history'].forEach(id => document.getElementById(id).classList.toggle('hidden', id !== tab));
+    }
+
+    document.querySelectorAll('.tab').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+
+    function getStatusClass(status) {
+      if (status === 'Просрочено') return 'st-bad';
+      if (status === 'Скоро ТО') return 'st-warn';
+      return 'st-ok';
+    }
+
+    function parseWorks(v) {
+      return String(v || '').split(/[,;\n]/).map(x => x.trim()).filter(Boolean);
+    }
+
+    function renderKpis() {
+      document.getElementById('kCars').textContent = state.cars.length;
+      document.getElementById('kServ').textContent = fmtMoney(state.history.reduce((s, x) => s + (x.amount || 0), 0));
+      document.getElementById('kTrips').textContent = state.trips.length;
+      document.getElementById('kMileage').textContent = fmtNum(state.trips.reduce((s, x) => s + (x.mileage || 0), 0)) + ' км';
+    }
+
+    function renderMaintenance() {
+      const q = document.getElementById('carSearch').value.trim().toLowerCase();
+      const st = document.getElementById('statusFilter').value;
+      const rows = state.cars
+        .filter(r => !q || `${r.name} ${r.plate}`.toLowerCase().includes(q))
+        .filter(r => !st || r.status === st);
+
+      const html = rows.map(r => {
+        const chips = parseWorks(r.worksDone).map(w => `<span class="chip">${escapeHtml(w)}</span>`).join('') || '<span class="small">—</span>';
+        return `<tr>
+          <td><b>${escapeHtml(r.name)}</b><div class="small">${escapeHtml(r.driver || '')}</div></td>
+          <td>${escapeHtml(r.plate || '')}</td>
+          <td>${escapeHtml(r.lastServiceDate || '—')}</td>
+          <td>${fmtNum(r.mileage)} км</td>
+          <td>${fmtMoney(r.totalMaintenanceCost || 0)}</td>
+          <td><div class="chips">${chips}</div></td>
+          <td>${r.nextMaintenance ? fmtNum(r.nextMaintenance) + ' км' : '—'}</td>
+          <td><span class="status ${getStatusClass(r.status)}">${escapeHtml(r.status)}</span></td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('maintenanceRows').innerHTML = html || '<tr><td colspan="8" class="empty">Нет автомобилей. Добавьте первую запись.</td></tr>';
+      renderMaintenanceExtra();
+    }
+
+    function renderMaintenanceExtra() {
+      const map = {};
+      state.history.forEach(h => { map[h.workType || 'Прочее'] = (map[h.workType || 'Прочее'] || 0) + (h.amount || 0); });
+      const total = Object.values(map).reduce((a,b) => a+b, 0) || 1;
+      const cs = Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v]) => {
+        const p = Math.round(v * 100 / total);
+        return `<div class="item"><div style="display:flex;justify-content:space-between;"><span>${escapeHtml(k)}</span><b>${p}%</b></div><div class="progress"><div class="bar" style="width:${p}%"></div></div></div>`;
+      }).join('') || '<div class="small">Пока нет данных о расходах.</div>';
+      document.getElementById('costStructure').innerHTML = cs;
+
+      const tasks = state.cars.filter(c => c.status !== 'В норме').sort((a,b)=>(a.nextMaintenance||1e9)-(b.nextMaintenance||1e9)).slice(0,4)
+        .map(c => `<div class="card" style="padding:10px;margin-bottom:8px;"><b>${escapeHtml(c.name)}</b> — ${escapeHtml(c.status)}<div class="small">Текущее: ${fmtNum(c.mileage)} км · Следующее ТО: ${c.nextMaintenance ? fmtNum(c.nextMaintenance) + ' км' : 'не задано'}</div></div>`).join('');
+      document.getElementById('upcomingTasks').innerHTML = tasks || '<div class="small">Критичных задач не найдено.</div>';
+    }
+
+    function renderTrips() {
+      const q = document.getElementById('tripSearch').value.trim().toLowerCase();
+      const rows = state.trips.filter(r => !q || `${r.objectName} ${r.employee} ${r.car}`.toLowerCase().includes(q));
+      document.getElementById('tripRows').innerHTML = rows.map(r => `
+        <tr>
+          <td>${escapeHtml(r.date || '—')}</td>
+          <td><b>${escapeHtml(r.objectName || '—')}</b></td>
+          <td>${escapeHtml(r.route || '—')}</td>
+          <td><b>${escapeHtml(r.car)}</b><div class="small">${escapeHtml(r.employee || '')}</div></td>
+          <td>${escapeHtml(r.purpose || '—')}</td>
+          <td>${fmtNum(r.mileage)} км</td>
+          <td>${fmtMoney(r.cost || 0)}</td>
+          <td>${escapeHtml(r.comment || '—')}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="8" class="empty">Нет поездок. Добавьте первую поездку.</td></tr>';
+
+      const byDest = {};
+      rows.forEach(r => { const key = r.objectName || 'Без объекта'; if (!byDest[key]) byDest[key] = {count:0,mileage:0,cost:0}; byDest[key].count++; byDest[key].mileage += r.mileage||0; byDest[key].cost += r.cost||0; });
+      document.getElementById('frequentDestinations').innerHTML = Object.entries(byDest).sort((a,b)=>b[1].count-a[1].count).slice(0,5).map(([k,v]) =>
+        `<div class="card" style="padding:10px;margin-bottom:8px;"><b>${escapeHtml(k)}</b><div class="small">${v.count} поездок · ${fmtNum(v.mileage)} км · ${fmtMoney(v.cost)}</div></div>`
+      ).join('') || '<div class="small">Недостаточно данных.</div>';
+
+      const totalMileage = rows.reduce((s, x) => s + (x.mileage || 0), 0);
+      const totalCost = rows.reduce((s, x) => s + (x.cost || 0), 0);
+      document.getElementById('tripStats').innerHTML = `<div class="item"><b>Суммарный пробег:</b> ${fmtNum(totalMileage)} км</div><div class="item"><b>Суммарные расходы:</b> ${fmtMoney(totalCost)}</div><div class="item"><b>Поездок:</b> ${rows.length}</div>`;
+    }
+
+    function renderHistory() {
+      const rows = [...state.history].sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+      document.getElementById('historyRows').innerHTML = rows.map(r => `
+        <tr>
+          <td>${escapeHtml(r.date || '—')}</td>
+          <td>${escapeHtml(r.car)}</td>
+          <td>${escapeHtml(r.workType || '—')}</td>
+          <td>${escapeHtml(r.works || '—')}</td>
+          <td>${fmtNum(r.mileage)} км</td>
+          <td>${fmtMoney(r.amount || 0)}</td>
+          <td>${escapeHtml(r.comment || '—')}</td>
+        </tr>
+      `).join('') || '<tr><td colspan="7" class="empty">Пока нет работ.</td></tr>';
+    }
+
+    function escapeHtml(v) {
+      return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function datalist(id, values) {
+      return `<datalist id="${id}">${values.map(v=>`<option value="${escapeHtml(v)}"></option>`).join('')}</datalist>`;
+    }
+
+    function openModal(type) {
+      state.modal = type;
+      const title = { car: 'Добавить автомобиль', service: 'Добавить ТО / ремонт', trip: 'Добавить поездку' }[type];
+      document.getElementById('modalTitle').textContent = title;
+      const form = document.getElementById('form');
+
+      if (type === 'car') {
+        form.innerHTML = `<div class="form-grid">
+          <label>Название / модель<input required name="name"></label>
+          <label>Госномер<input required name="plate"></label>
+          <label>Водитель (опц.)<input name="driver" list="employees"></label>
+          <label>Текущий пробег<input required type="number" min="0" name="mileage"></label>
+          <label>Ближайшее ТО (км)<input type="number" min="0" name="nextMaintenance"></label>
+          <label class="full">Комментарий<textarea name="comment" rows="2"></textarea></label>
+          ${datalist('employees', state.employees)}
+        </div>`;
+      }
+
+      if (type === 'service') {
+        form.innerHTML = `<div class="form-grid">
+          <label>Автомобиль<input required name="car" list="cars"></label>
+          <label>Дата<input required type="date" name="date"></label>
+          <label>Тип работы<select required name="workType"><option value="">Выберите</option><option>ТО</option><option>Ремонт</option></select></label>
+          <label>Пробег<input required type="number" min="0" name="mileage"></label>
+          <label class="full">Что делалось<textarea required name="works" rows="2" placeholder="Например: замена масла, фильтры"></textarea></label>
+          <label>Сумма<input required type="number" min="0" name="amount"></label>
+          <label>Следующее ТО (км)<input type="number" min="0" name="nextMaintenance"></label>
+          <label class="full">Комментарий<textarea name="comment" rows="2"></textarea></label>
+          ${datalist('cars', state.cars.map(c=>c.name))}
+        </div>`;
+      }
+
+      if (type === 'trip') {
+        form.innerHTML = `<div class="form-grid">
+          <label>Дата<input required type="date" name="date"></label>
+          <label>Автомобиль<input required name="car" list="cars"></label>
+          <label>Сотрудник<input required name="employee" list="employees"></label>
+          <label>Тип поездки<input required name="tripType" placeholder="Объект / межгород / сервис"></label>
+          <label>Объект<input name="objectName" list="objects"></label>
+          <label>Маршрут<input name="route" placeholder="Ульяновск → Самара"></label>
+          <label class="full">Цель поездки<input name="purpose"></label>
+          <label>Километраж<input required type="number" min="1" name="mileage"></label>
+          <label>Расходы<input required type="number" min="0" name="cost"></label>
+          <label class="full">Комментарий<textarea name="comment" rows="2"></textarea></label>
+          ${datalist('cars', state.cars.map(c=>c.name))}
+          ${datalist('employees', state.employees)}
+          ${datalist('objects', state.objects)}
+        </div>`;
+      }
+
+      form.innerHTML += `<div class="row"><button class="btn" type="button" onclick="closeModal()">Отмена</button><button class="btn primary" type="submit">Сохранить</button></div>`;
+      document.getElementById('modal').style.display = 'flex';
+      const d = form.querySelector('[name="date"]');
+      if (d) d.value = new Date().toISOString().slice(0,10);
+    }
+
+    function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+    function submitModal(e) {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const payload = Object.fromEntries(fd.entries());
+      const map = { car: 'saveFleetVehicle', service: 'saveFleetService', trip: 'saveFleetTrip' };
+      google.script.run
+        .withSuccessHandler(msg => { showToast(msg || 'Сохранено', true); closeModal(); loadData(); })
+        .withFailureHandler(err => showToast('Ошибка: ' + (err.message || err), false))[map[state.modal]](payload);
+    }
+
+    function loadData() {
+      google.script.run
+        .withSuccessHandler(data => {
+          state.cars = data.cars || [];
+          state.trips = data.trips || [];
+          state.history = data.history || [];
+          state.services = data.services || [];
+          state.employees = data.employees || [];
+          state.objects = data.objects || [];
+          renderKpis();
+          renderMaintenance();
+          renderTrips();
+          renderHistory();
+        })
+        .withFailureHandler(err => showToast('Ошибка загрузки: ' + (err.message || err), false))
+        .getFleetTripsInitData();
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
