@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f4f7fb;
+      color: #1f2937;
+    }
+
+    .wrap {
+      padding: 18px 20px 22px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+
+    .filters {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 230px 230px 180px 180px auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+
+    select, input[type="date"] {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #d1d9e6;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 11px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: #2f6fed;
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #e9edf5;
+      color: #111827;
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    .kpi-label {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 8px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .kpi-value {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      background: #e9edf5;
+      color: #111827;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: #2f6fed;
+      color: #fff;
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .section-sub {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+
+    .table-wrap {
+      max-height: 520px;
+      overflow: auto;
+      border: 1px solid #e7ecf4;
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #eef3fb;
+      z-index: 1;
+      text-align: left;
+      padding: 10px 10px;
+      border-bottom: 1px solid #d7dfef;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #edf1f7;
+      vertical-align: top;
+    }
+
+    tbody tr:hover {
+      background: #f8fbff;
+    }
+
+    .num {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .bar-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 220px 1fr 110px;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .bar-name {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .bar-track {
+      height: 12px;
+      border-radius: 999px;
+      background: #e8eef8;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: #2f6fed;
+      border-radius: 999px;
+    }
+
+    .bar-value {
+      text-align: right;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .search-pill {
+      position: relative;
+      width: 100%;
+    }
+
+    .search-pill input {
+      width: 100%;
+      height: 42px;
+      box-sizing: border-box;
+      border: 1px solid #d1d9e6;
+      border-radius: 999px;
+      padding: 0 16px 0 42px;
+      font-size: 14px;
+      background: #fff;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .search-pill input::placeholder {
+      color: #94a3b8;
+    }
+
+    .search-pill input:focus {
+      outline: none;
+      border-color: #2f6fed;
+      box-shadow: 0 0 0 4px rgba(47,111,237,0.12);
+      background: #fff;
+    }
+
+    .search-pill::before {
+      content: '⌕';
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      color: #94a3b8;
+      pointer-events: none;
+    }
+
+    .filters-compact {
+      display: grid;
+      grid-template-columns: minmax(260px, 1.2fr) repeat(3, minmax(180px, 1fr)) auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .loading {
+      padding: 60px 20px;
+      text-align: center;
+      font-size: 16px;
+      color: #6b7280;
+    }
+
+    .empty {
+      padding: 20px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">Панель руководителя</div>
+        <div class="subtitle">Ключевые показатели, остатки, движения и проблемные позиции</div>
+      </div>
+      <button class="btn btn-secondary" onclick="google.script.host.close()">Закрыть</button>
+    </div>
+
+    <div class="filters">
+      <div class="filter-grid">
+        <div>
+          <label for="objectFilter">Объект</label>
+          <select id="objectFilter"></select>
+        </div>
+        <div>
+          <label for="typeFilter">Тип</label>
+          <select id="typeFilter"></select>
+        </div>
+        <div>
+          <label for="dateFrom">Дата от</label>
+          <input id="dateFrom" type="date">
+        </div>
+        <div>
+          <label for="dateTo">Дата до</label>
+          <input id="dateTo" type="date">
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="loadDashboard()">Показать</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="loading" class="loading">Загрузка панели...</div>
+
+    <div id="content" style="display:none;">
+      <div class="kpi-grid">
+        <div class="card">
+          <div class="kpi-label">Общая стоимость</div>
+          <div class="kpi-value" id="kpiTotalValue">0</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">Всего позиций</div>
+          <div class="kpi-value" id="kpiPositions">0</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">Объектов</div>
+          <div class="kpi-value" id="kpiObjects">0</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">Движений</div>
+          <div class="kpi-value" id="kpiMovements">0</div>
+        </div>
+        <div class="card">
+          <div class="kpi-label">Всего количества</div>
+          <div class="kpi-value" id="kpiTotalQty">0</div>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab active" data-view="overview" onclick="setView('overview')">Обзор</button>
+        <button class="tab" data-view="products" onclick="setView('products')">Товары</button>
+        <button class="tab" data-view="movements" onclick="setView('movements')">Движения</button>
+        <button class="tab" data-view="problems" onclick="setView('problems')">Проблемы</button>
+        <button class="tab" data-view="responsibility" onclick="setView('responsibility')">Ответственные</button>
+      </div>
+
+      <div id="view-overview" class="view active">
+        <div class="two-col">
+          <div class="card">
+            <div class="section-title">Стоимость по объектам</div>
+            <div class="section-sub">Где сосредоточена основная стоимость остатков</div>
+            <div id="valueByObjectBars" class="bar-list"></div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">Итоги по типам</div>
+            <div class="section-sub">Количество и стоимость по типам</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Тип</th>
+                    <th class="num">Количество</th>
+                    <th class="num">Стоимость</th>
+                  </tr>
+                </thead>
+                <tbody id="summaryByTypeBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">Топ товаров по стоимости</div>
+          <div class="section-sub">Самые дорогие позиции в остатках по текущему фильтру</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Товар</th>
+                  <th>Объект</th>
+                  <th>Тип</th>
+                  <th>Категория</th>
+                  <th class="num">Кол-во</th>
+                  <th class="num">Цена</th>
+                  <th class="num">Стоимость</th>
+                </tr>
+              </thead>
+              <tbody id="topProductsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-products" class="view">
+        <div class="card">
+          <div class="section-title">Товары</div>
+          <div class="section-sub">Фильтр по типу внутри вкладки</div>
+
+          <div style="margin-bottom:12px; display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+            <div style="min-width:260px;">
+              <label for="productsTypeFilter">Тип товара</label>
+              <select id="productsTypeFilter" onchange="renderProductsTable()">
+                <option value="">Все типы</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Артикул</th>
+                  <th>Товар</th>
+                  <th>Объект</th>
+                  <th>Тип</th>
+                  <th>Категория</th>
+                  <th class="num">Кол-во</th>
+                  <th class="num">Цена</th>
+                  <th class="num">Стоимость</th>
+                </tr>
+              </thead>
+              <tbody id="productsFullBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-movements" class="view">
+        <div class="card">
+          <div class="section-title">Последние движения</div>
+          <div class="section-sub">Показывает активность по складу и объектам за выбранный период</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Операция</th>
+                  <th>Товар</th>
+                  <th>Тип</th>
+                  <th class="num">Кол-во</th>
+                  <th>Откуда</th>
+                  <th>Куда</th>
+                  <th>Основание</th>
+                  <th>Комментарий</th>
+                </tr>
+              </thead>
+              <tbody id="recentMovementsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-problems" class="view">
+        <div class="card">
+          <div class="section-title">Проблемные позиции</div>
+          <div class="section-sub">Позиции с нулевым количеством или нулевой ценой</div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Артикул</th>
+                  <th>Товар</th>
+                  <th>Объект</th>
+                  <th>Тип</th>
+                  <th>Категория</th>
+                  <th class="num">Кол-во</th>
+                  <th class="num">Цена</th>
+                  <th class="num">Стоимость</th>
+                </tr>
+              </thead>
+              <tbody id="problematicBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <div id="view-responsibility" class="view">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="section-title">Ответственные за инструмент</div>
+          <div class="section-sub">Поиск текущих ответственных по объекту, типу, товару и сотруднику</div>
+
+          <div class="filters-compact">
+            <div>
+              <label for="respSearch">Поиск</label>
+              <div class="search-pill">
+                <input id="respSearch" type="text" placeholder="Товар, артикул или ответственный" oninput="debouncedLoadResponsibilityData()">
+              </div>
+            </div>
+            <div>
+              <label for="respObjectFilter">Объект</label>
+              <select id="respObjectFilter" onchange="loadResponsibilityData()"></select>
+            </div>
+            <div>
+              <label for="respTypeFilter">Тип</label>
+              <select id="respTypeFilter" onchange="loadResponsibilityData()"></select>
+            </div>
+            <div>
+              <label for="respEmployeeFilter">Ответственный</label>
+              <select id="respEmployeeFilter" onchange="loadResponsibilityData()"></select>
+            </div>
+            <div>
+              <button class="btn btn-secondary" onclick="loadResponsibilityData()">Обновить</button>
+            </div>
+          </div>
+
+          <div class="table-wrap" style="margin-top:14px;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ответственный</th>
+                  <th>Артикул</th>
+                  <th>Товар</th>
+                  <th>Тип</th>
+                  <th>Категория</th>
+                  <th>Объект</th>
+                  <th>Дата назначения</th>
+                  <th>Комментарий</th>
+                </tr>
+              </thead>
+              <tbody id="respCurrentBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section-title">История ответственности</div>
+          <div class="section-sub">История назначений и изменений ответственных</div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Действие</th>
+                  <th>Ответственный</th>
+                  <th>Артикул</th>
+                  <th>Товар</th>
+                  <th>Объект</th>
+                  <th>Комментарий</th>
+                  <th>Кто изменил</th>
+                </tr>
+              </thead>
+              <tbody id="respHistoryBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+  </div>
+
+  
+<script>
+  let currentView = 'overview';
+  window.managementInitData = {};
+  window.dashboardData = {};
+
+  function init() {
+    google.script.run
+      .withSuccessHandler(renderInit)
+      .withFailureHandler(showError)
+      .getManagementDashboardInitData();
+  }
+
+  function renderInit(data) {
+    window.managementInitData = data || {};
+    fillSelect('objectFilter', 'Все объекты', data.objects || []);
+    fillSelect('typeFilter', 'Все типы', data.types || []);
+    fillSelect('respObjectFilter', 'Все объекты', data.objects || []);
+    fillSelect('respTypeFilter', 'Все типы', data.types || []);
+    fillSelect('respEmployeeFilter', 'Все ответственные', data.employees || []);
+    loadDashboard();
+  }
+
+  function fillSelect(id, firstLabel, items) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML =
+      '<option value="">' + escapeHtml(firstLabel) + '</option>' +
+      (items || []).map(v => '<option value="' + escapeHtml(v) + '">' + escapeHtml(v) + '</option>').join('');
+  }
+
+  function loadDashboard() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('content').style.display = 'none';
+
+    google.script.run
+      .withSuccessHandler(renderDashboard)
+      .withFailureHandler(showError)
+      .getManagementDashboardData({
+        objectName: document.getElementById('objectFilter').value,
+        typeName: document.getElementById('typeFilter').value,
+        dateFrom: document.getElementById('dateFrom').value,
+        dateTo: document.getElementById('dateTo').value,
+        query: document.getElementById('respSearch') ? document.getElementById('respSearch').value : '',
+        employee: document.getElementById('respEmployeeFilter') ? document.getElementById('respEmployeeFilter').value : ''
+      });
+  }
+
+  let respSearchTimer = null;
+
+  function debouncedLoadResponsibilityData() {
+    if (respSearchTimer) clearTimeout(respSearchTimer);
+    respSearchTimer = setTimeout(loadResponsibilityData, 180);
+  }
+
+  function loadResponsibilityData() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('content').style.display = 'none';
+
+    google.script.run
+      .withSuccessHandler(renderDashboard)
+      .withFailureHandler(showError)
+      .getManagementDashboardData({
+        objectName: document.getElementById('respObjectFilter') ? document.getElementById('respObjectFilter').value : '',
+        typeName: document.getElementById('respTypeFilter') ? document.getElementById('respTypeFilter').value : '',
+        dateFrom: document.getElementById('dateFrom').value,
+        dateTo: document.getElementById('dateTo').value,
+        query: document.getElementById('respSearch') ? document.getElementById('respSearch').value : '',
+        employee: document.getElementById('respEmployeeFilter') ? document.getElementById('respEmployeeFilter').value : ''
+      });
+  }
+
+  function renderDashboard(data) {
+    window.dashboardData = data || {};
+
+    document.getElementById('kpiTotalValue').textContent = formatMoney(data.kpi.totalValue);
+    document.getElementById('kpiPositions').textContent = formatNumber(data.kpi.positionsCount);
+    document.getElementById('kpiObjects').textContent = formatNumber(data.kpi.objectsCount);
+    document.getElementById('kpiMovements').textContent = formatNumber(data.kpi.movementsCount || 0);
+    document.getElementById('kpiTotalQty').textContent = formatNumber(data.kpi.totalQty);
+
+    renderBars(data.valueByObject || []);
+    renderSummaryByType(data.summaryByType || []);
+    renderTopProducts('topProductsBody', data.topProducts || [], false);
+    fillProductsTypeFilter(data.allProducts || []);
+    renderProductsTable();
+    renderMovements(data.recentMovements || []);
+    renderProblems(data.problematic || []);
+    renderResponsibilityCurrent(data.currentResponsibilities || []);
+    renderResponsibilityHistory(data.history || []);
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    setView(currentView);
+  }
+
+  function renderResponsibilityCurrent(rows) {
+    const body = document.getElementById('respCurrentBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="8" class="empty">Нет данных</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td>${escapeHtml(r.employee)}</td>
+        <td>${escapeHtml(r.article)}</td>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td>${escapeHtml(r.category)}</td>
+        <td>${escapeHtml(r.objectName)}</td>
+        <td>${escapeHtml(r.assignedAt || '')}</td>
+        <td>${escapeHtml(r.comment || '')}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderResponsibilityHistory(rows) {
+    const body = document.getElementById('respHistoryBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="8" class="empty">Нет данных</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td>${escapeHtml(r.date)}</td>
+        <td>${escapeHtml(r.action)}</td>
+        <td>${escapeHtml(r.employee || '')}</td>
+        <td>${escapeHtml(r.article)}</td>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.objectName)}</td>
+        <td>${escapeHtml(r.comment || '')}</td>
+        <td>${escapeHtml(r.user || '')}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderBars(rows) {
+    const box = document.getElementById('valueByObjectBars');
+    if (!rows.length) {
+      box.innerHTML = '<div class="empty">Нет данных</div>';
+      return;
+    }
+
+    const maxValue = Math.max(...rows.map(r => Number(r.value) || 0), 1);
+
+    box.innerHTML = rows.map(r => {
+      const percent = Math.max(2, Math.round(((Number(r.value) || 0) / maxValue) * 100));
+      return `
+        <div class="bar-row">
+          <div class="bar-name">${escapeHtml(r.name)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${percent}%"></div></div>
+          <div class="bar-value">${formatMoney(r.value)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderSummaryByType(rows) {
+    const body = document.getElementById('summaryByTypeBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="3" class="empty">Нет данных</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td>${escapeHtml(r.name)}</td>
+        <td class="num">${formatNumber(r.qty)}</td>
+        <td class="num">${formatMoney(r.value)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderTopProducts(bodyId, rows, includeArticle) {
+    const body = document.getElementById(bodyId);
+    if (!rows.length) {
+      body.innerHTML = includeArticle
+        ? '<tr><td colspan="8" class="empty">Нет данных</td></tr>'
+        : '<tr><td colspan="7" class="empty">Нет данных</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map(r => includeArticle ? `
+      <tr>
+        <td>${escapeHtml(r.article)}</td>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.objectName)}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td>${escapeHtml(r.category)}</td>
+        <td class="num">${formatNumber(r.qty)}</td>
+        <td class="num">${formatMoney(r.price)}</td>
+        <td class="num">${formatMoney(r.value)}</td>
+      </tr>
+    ` : `
+      <tr>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.objectName)}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td>${escapeHtml(r.category)}</td>
+        <td class="num">${formatNumber(r.qty)}</td>
+        <td class="num">${formatMoney(r.price)}</td>
+        <td class="num">${formatMoney(r.value)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderMovements(rows) {
+    const body = document.getElementById('recentMovementsBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="9" class="empty">Нет данных</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td>${escapeHtml(r.date)}</td>
+        <td>${escapeHtml(r.operation)}</td>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td class="num">${formatNumber(r.qty)}</td>
+        <td>${escapeHtml(r.fromObj)}</td>
+        <td>${escapeHtml(r.toObj)}</td>
+        <td>${escapeHtml(r.basis)}</td>
+        <td>${escapeHtml(r.comment)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderProblems(rows) {
+    const body = document.getElementById('problematicBody');
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="8" class="empty">Проблемных позиций не найдено</td></tr>';
+      return;
+    }
+
+    body.innerHTML = rows.map(r => `
+      <tr>
+        <td>${escapeHtml(r.article)}</td>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.objectName)}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td>${escapeHtml(r.category)}</td>
+        <td class="num">${formatNumber(r.qty)}</td>
+        <td class="num">${formatMoney(r.price)}</td>
+        <td class="num">${formatMoney(r.value)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function setView(viewName) {
+    currentView = viewName;
+    document.querySelectorAll('.tab').forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewName));
+    document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+    document.getElementById('view-' + viewName).classList.add('active');
+  }
+
+  function fillProductsTypeFilter(rows) {
+    const el = document.getElementById('productsTypeFilter');
+    if (!el) return;
+
+    const types = [...new Set((rows || []).map(r => String(r.type || '').trim()).filter(Boolean))]
+      .sort((a, b) => String(a).localeCompare(String(b), 'ru'));
+
+    el.innerHTML =
+      '<option value="">Все типы</option>' +
+      types.map(t => '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>').join('');
+  }
+
+  function renderProductsTable() {
+    const body = document.getElementById('productsFullBody');
+    if (!body) return;
+
+    const data = window.dashboardData || {};
+    const rows = (data.allProducts || []).slice();
+    const selectedType = (document.getElementById('productsTypeFilter') || {}).value || '';
+
+    let filtered = rows;
+    if (selectedType) filtered = filtered.filter(r => String(r.type || '').trim() === selectedType);
+
+    if (!filtered.length) {
+      body.innerHTML = '<tr><td colspan="8" class="empty">Нет данных</td></tr>';
+      return;
+    }
+
+    body.innerHTML = filtered.map(r => `
+      <tr>
+        <td>${escapeHtml(r.article)}</td>
+        <td>${escapeHtml(r.name)}</td>
+        <td>${escapeHtml(r.objectName)}</td>
+        <td>${escapeHtml(r.type)}</td>
+        <td>${escapeHtml(r.category)}</td>
+        <td class="num">${formatNumber(r.qty)}</td>
+        <td class="num">${formatMoney(r.price)}</td>
+        <td class="num">${formatMoney(r.value)}</td>
+      </tr>
+    `).join('');
+  }
+
+  function formatMoney(value) {
+    const num = Number(value) || 0;
+    return num.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function formatNumber(value) {
+    const num = Number(value) || 0;
+    return num.toLocaleString('ru-RU', {
+      minimumFractionDigits: num % 1 === 0 ? 0 : 2,
+      maximumFractionDigits: 3
+    });
+  }
+
+  function escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function showError(err) {
+    document.getElementById('loading').textContent = 'Ошибка: ' + (err.message || err);
+    document.getElementById('content').style.display = 'none';
+  }
+
+  init();
+</script>
+</body>
+
+</html>

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f5f7fb;
+      color: #222;
+    }
+    .title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    .sub { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+    .role { font-size: 12px; color: #2f6fed; font-weight: 700; margin-bottom: 16px; }
+    .btn {
+      display: block; width: 100%; border: none; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+      text-align: left; font-size: 14px; font-weight: 700; cursor: pointer; background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08); transition: 0.15s ease;
+    }
+    .btn:hover { background: #eef4ff; }
+    .btn-primary { background: #2f6fed; color: #fff; }
+    .btn-primary:hover { background: #2459bf; }
+    .muted { font-size: 12px; color: #6b7280; margin-top: 12px; line-height: 1.4; }
+    .status { margin-top: 8px; font-size: 12px; color: #188038; font-weight: 700; min-height: 18px; }
+    .empty { background: #fff; border-radius: 12px; padding: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); font-size: 13px; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="title">Меню</div>
+  <div class="sub">Показываются только разделы, доступные вашей роли</div>
+  <div id="role" class="role"></div>
+  <div id="buttons"></div>
+  <div id="status" class="status"></div>
+  <div class="muted">Права доступа читаются из листов <b>Роли доступа</b> и <b>Пользователи и роли</b>.</div>
+
+  <script>
+    function escapeHtml(v) {
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function runAction(fnName, statusText) {
+      document.getElementById('status').textContent = statusText;
+      google.script.run
+        .withSuccessHandler(function () { document.getElementById('status').textContent = ''; })
+        .withFailureHandler(function (err) { document.getElementById('status').textContent = 'Ошибка: ' + (err.message || err); })[fnName]();
+    }
+
+    function makeButton(text, fnName, statusText, primary) {
+      return '<button class="btn ' + (primary ? 'btn-primary' : '') + '" data-fn="' + escapeHtml(fnName) + '" data-status="' + escapeHtml(statusText) + '">' + escapeHtml(text) + '</button>';
+    }
+
+    google.script.run
+      .withSuccessHandler(function (info) {
+        const p = (info && info.permissions) || {};
+        document.getElementById('role').textContent = 'Роль: ' + (info.role || 'не назначена');
+        const buttons = [];
+        if (p.storekeeperDashboard) buttons.push(makeButton('Дашборд кладовщика', 'openQuickStorekeeperDashboard', 'Открываем дашборд кладовщика...', true));
+        if (p.inventory) buttons.push(makeButton('Инвентаризация', 'openQuickInventory', 'Открываем инвентаризацию...'));
+        if (p.search) buttons.push(makeButton('Поиск товара', 'openQuickSearch', 'Открываем поиск товара...'));
+        if (p.managementDashboard) buttons.push(makeButton('Дашборд руководителя', 'openQuickManagementDashboard', 'Открываем дашборд руководителя...'));
+        if (p.manageAccess) buttons.push(makeButton('Управление доступом', 'showAccessAdminPanel', 'Открываем управление доступом...'));
+        if (p.refreshAll) buttons.push(makeButton('Обновить всё', 'openQuickRefreshAll', 'Обновляем данные...'));
+
+        document.getElementById('buttons').innerHTML = buttons.length
+          ? buttons.join('')
+          : '<div class="empty">Для вашего email пока не выдана ни одна роль. Добавьте пользователя на лист <b>Пользователи и роли</b>.</div>';
+        document.querySelectorAll('#buttons .btn').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            runAction(btn.dataset.fn, btn.dataset.status);
+          });
+        });
+      })
+      .withFailureHandler(function (err) {
+        document.getElementById('status').textContent = 'Ошибка: ' + (err.message || err);
+      })
+      .getCurrentUserRoleInfo();
+  </script>
+</body>
+</html>

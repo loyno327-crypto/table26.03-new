@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f5f7fb;
+      color: #222;
+    }
+
+    .wrap {
+      padding: 14px 16px;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      background: #e9edf5;
+      color: #111827;
+      border: none;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .tab.active {
+      background: #2f6fed;
+      color: #fff;
+    }
+
+    .view {
+      display: none;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      background: #fff;
+      padding: 10px 12px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .toolbar label {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    select,
+    input[type="text"],
+    input[type="number"],
+    textarea {
+      border: 1px solid #cfd6e4;
+      border-radius: 7px;
+      padding: 5px 7px;
+      font-size: 12px;
+      background: #fff;
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 30px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 72px;
+    }
+
+    .object-select {
+      width: 230px;
+    }
+
+    .search {
+      flex: 1 1 280px;
+      min-width: 220px;
+    }
+
+    .table-wrap,
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .card {
+      padding: 14px;
+      overflow: visible;
+    }
+
+    .scroll {
+      max-height: 520px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
+      font-size: 12px;
+    }
+
+    thead th {
+      background: #eef3fb;
+      padding: 8px 6px;
+      border-bottom: 1px solid #d8e0ef;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      line-height: 1.2;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    tbody td {
+      padding: 6px 6px;
+      border-bottom: 1px solid #edf1f7;
+      vertical-align: middle;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    tbody tr:hover {
+      background: #f8fbff;
+    }
+
+    tbody tr.active-row {
+      box-shadow: inset 0 0 0 9999px rgba(255, 248, 217, 0.6);
+    }
+
+    tbody tr.row-writeoff {
+      background: #fff1f1;
+    }
+
+    tbody tr.row-income {
+      background: #f1fbf3;
+    }
+
+    tbody tr.row-transfer {
+      background: #f1f7ff;
+    }
+
+    .error {
+      color: #d93025;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    .ok {
+      color: #188038;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 9px;
+      padding: 10px 18px;
+      font-size: 14px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-primary {
+      background: #2f6fed;
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #e9edf5;
+      color: #222;
+    }
+
+    .btn-success {
+      background: #188038;
+      color: #fff;
+    }
+
+    .meta {
+      font-size: 12px;
+      color: #5f6b7a;
+      margin-left: auto;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .loading {
+      padding: 40px;
+      text-align: center;
+      font-size: 15px;
+    }
+
+    .input-focus {
+      background: #fffef2 !important;
+      border-color: #7aa7ff !important;
+      box-shadow: 0 0 0 2px rgba(47, 111, 237, 0.10);
+    }
+
+    .qty-input {
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .basis-input {
+      font-size: 12px;
+    }
+
+    .action-select,
+    .dest-select,
+    .basis-input,
+    .qty-input {
+      width: 100%;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .section-sub {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 10px;
+    }
+
+    .mini {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .request-table table {
+      table-layout: auto;
+    }
+
+    .request-table input,
+    .request-table select {
+      min-height: 28px;
+      font-size: 12px;
+    }
+
+    .number {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    /* inventory columns */
+    #view-inventory th:nth-child(1), #view-inventory td:nth-child(1) { width: 6%; }
+    #view-inventory th:nth-child(2), #view-inventory td:nth-child(2) { width: 18%; }
+    #view-inventory th:nth-child(3), #view-inventory td:nth-child(3) { width: 9%; }
+    #view-inventory th:nth-child(4), #view-inventory td:nth-child(4) { width: 11%; }
+    #view-inventory th:nth-child(5), #view-inventory td:nth-child(5) { width: 4%; }
+    #view-inventory th:nth-child(6), #view-inventory td:nth-child(6) { width: 5%; text-align: center; }
+    #view-inventory th:nth-child(7), #view-inventory td:nth-child(7) { width: 7%; }
+    #view-inventory th:nth-child(8), #view-inventory td:nth-child(8) { width: 5%; }
+    #view-inventory th:nth-child(9), #view-inventory td:nth-child(9) { width: 13%; }
+    #view-inventory th:nth-child(10), #view-inventory td:nth-child(10) { width: 16%; }
+    #view-inventory th:nth-child(11), #view-inventory td:nth-child(11) { width: 6%; }
+
+    @media (max-width: 1400px) {
+      table {
+        font-size: 11px;
+      }
+
+      select,
+      input[type="text"],
+      input[type="number"],
+      textarea {
+        font-size: 11px;
+        min-height: 28px;
+        padding: 4px 6px;
+      }
+
+      .title {
+        font-size: 20px;
+      }
+
+      .grid-2, .grid-3, .grid-4 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">Инвентаризация</div>
+
+    <div class="tabs">
+      <button class="tab active" data-view="inventory" onclick="setView('inventory')">Инвентаризация</button>
+      <button class="tab" data-view="request" onclick="setView('request')">Запрос</button>
+    </div>
+
+    <!-- INVENTORY -->
+    <div id="view-inventory" class="view active">
+      <div class="toolbar">
+        <label for="objectSelect">Объект:</label>
+        <select id="objectSelect" class="object-select"></select>
+
+        <label for="searchInput">Поиск:</label>
+        <input id="searchInput" class="search" type="text" placeholder="Артикул или название товара">
+
+        <div class="meta" id="metaInfo">Загрузка...</div>
+      </div>
+
+      <div class="table-wrap">
+        <div id="loading" class="loading">Загрузка данных...</div>
+
+        <div id="tableBlock" class="scroll hidden">
+          <table>
+            <thead>
+              <tr>
+                <th>Артикул</th>
+                <th>Наименование</th>
+                <th>Тип</th>
+                <th>Категория</th>
+                <th>Ед.</th>
+                <th>Учетное<br>кол-во</th>
+                <th>Действие</th>
+                <th>Кол-во</th>
+                <th>Куда</th>
+                <th>Основание</th>
+                <th>Ошибка</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="footer">
+        <button class="btn btn-secondary" onclick="google.script.host.close()">Отмена</button>
+        <button class="btn btn-secondary" onclick="printInventorySheet()">Распечатать</button>
+        <button class="btn btn-primary" onclick="submitInventory()">Провести</button>
+      </div>
+      <div id="inventoryReport" style="margin-top:12px;"></div>
+    </div>
+
+    <!-- REQUEST -->
+    <div id="view-request" class="view">
+      <div class="card">
+        <div class="section-title">Запрос на новые позиции</div>
+        <div class="section-sub">Если товара нет в номенклатуре, отправь запрос кладовщику. В одном запросе — один объект и не более 15 строк.</div>
+
+        <div class="grid grid-2">
+          <div>
+            <label for="requestObjectSelect">Объект</label>
+            <select id="requestObjectSelect"></select>
+          </div>
+          <div>
+            <label for="requestCommonBasis">Общее основание</label>
+            <input id="requestCommonBasis" type="text" placeholder="Например: Закупка по 115 заявке">
+          </div>
+        </div>
+
+        <div class="request-table table-wrap" style="margin-top:12px;">
+          <div class="scroll" style="max-height:430px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:6%;">№</th>
+                  <th style="width:42%;">Название товара</th>
+                  <th style="width:14%;">Ед. изм.</th>
+                  <th style="width:12%;">Кол-во</th>
+                  <th style="width:16%;">Цена за 1 ед.</th>
+                  <th style="width:10%;">Сумма</th>
+                </tr>
+              </thead>
+              <tbody id="requestBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mini" style="margin-top:10px;">
+          Заполни только нужные строки. Пустые строки отправляться не будут.
+        </div>
+
+        <div id="requestMessage" style="margin-top:10px;"></div>
+
+        <div class="footer">
+          <button class="btn btn-secondary" onclick="clearRequestForm()">Очистить</button>
+          <button class="btn btn-success" onclick="submitRequest()">Отправить запрос</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allItems = [];
+    let objects = [];
+    let units = [];
+    let rowState = {};
+    let currentView = 'inventory';
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function setView(viewName) {
+      currentView = viewName;
+
+      document.querySelectorAll('.tab').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === viewName);
+      });
+
+      document.querySelectorAll('.view').forEach(view => {
+        view.classList.remove('active');
+      });
+
+      document.getElementById('view-' + viewName).classList.add('active');
+    }
+
+    function getRowKeyByItem(item) {
+      return String(item.objectName || '').trim() + '||' + String(item.article || '').trim();
+    }
+
+    function getStateForKey(key) {
+      if (!rowState[key]) {
+        rowState[key] = {
+          objectName: '',
+          article: '',
+          name: '',
+          type: '',
+          category: '',
+          unit: '',
+          stockQty: 0,
+          action: '',
+          changeQty: '',
+          destination: '',
+          basis: ''
+        };
+      }
+      return rowState[key];
+    }
+
+    function init() {
+      google.script.run
+        .withSuccessHandler(renderInit)
+        .withFailureHandler(showError)
+        .getInventoryFormInitData();
+
+      google.script.run
+        .withSuccessHandler(renderRequestInit)
+        .withFailureHandler(showRequestError)
+        .getRequestFormInitData();
+    }
+
+    function renderInit(data) {
+      allItems = data.items || [];
+      objects = data.objects || [];
+
+      const objectSelect = document.getElementById('objectSelect');
+      objectSelect.innerHTML =
+        '<option value="">Выбери объект</option>' +
+        objects.map(function (o) {
+          return '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>';
+        }).join('');
+
+      objectSelect.addEventListener('change', function () {
+        renderRows();
+      });
+
+      document.getElementById('searchInput').addEventListener('input', function () {
+        renderRows();
+      });
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('tableBlock').classList.remove('hidden');
+
+      updateMeta(0);
+    }
+
+    function renderRequestInit(data) {
+      const requestObjects = data.objects || objects || [];
+      units = data.units || [];
+
+      document.getElementById('requestObjectSelect').innerHTML =
+        '<option value="">Выбери объект</option>' +
+        requestObjects.map(function (o) {
+          return '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>';
+        }).join('');
+
+      renderRequestRows();
+    }
+
+    function updateMeta(count) {
+      const objectName = document.getElementById('objectSelect').value || '';
+      let filledCount = 0;
+
+      Object.keys(rowState).forEach(function (key) {
+        const state = rowState[key];
+        if (!state) return;
+        if (state.objectName !== objectName) return;
+        if (!state.action) return;
+        filledCount++;
+      });
+
+      document.getElementById('metaInfo').textContent =
+        'Позиций: ' + count + ' | Выбрано действий: ' + filledCount;
+    }
+
+    function saveVisibleRowState(idx) {
+      const row = document.getElementById('row-' + idx);
+      if (!row) return;
+
+      const key = row.dataset.key;
+      if (!key) return;
+
+      const state = getStateForKey(key);
+
+      state.objectName = row.dataset.objectName || '';
+      state.article = row.dataset.article || '';
+      state.name = row.dataset.name || '';
+      state.type = row.dataset.type || '';
+      state.category = row.dataset.category || '';
+      state.unit = row.dataset.unit || '';
+      state.stockQty = row.dataset.stock || 0;
+      state.action = document.getElementById('action-' + idx)?.value || '';
+      state.changeQty = document.getElementById('qty-' + idx)?.value || '';
+      state.destination = document.getElementById('dest-' + idx)?.value || '';
+      state.basis = (document.getElementById('basis-' + idx)?.value || '').trim();
+    }
+
+    function applySavedRowState(idx) {
+      const row = document.getElementById('row-' + idx);
+      if (!row) return;
+
+      const key = row.dataset.key;
+      if (!key) return;
+
+      const state = rowState[key];
+      if (!state) {
+        handleActionChange(idx);
+        return;
+      }
+
+      const actionEl = document.getElementById('action-' + idx);
+      const qtyEl = document.getElementById('qty-' + idx);
+      const destEl = document.getElementById('dest-' + idx);
+      const basisEl = document.getElementById('basis-' + idx);
+
+      if (actionEl) actionEl.value = state.action || '';
+      if (qtyEl) qtyEl.value = state.changeQty || '';
+      if (destEl) destEl.value = state.destination || '';
+      if (basisEl) basisEl.value = state.basis || '';
+
+      handleActionChange(idx);
+    }
+
+    function renderRows() {
+      const objectName = document.getElementById('objectSelect').value;
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const body = document.getElementById('inventoryBody');
+
+      if (!objectName) {
+        body.innerHTML = '';
+        updateMeta(0);
+        return;
+      }
+
+      let rows = allItems.filter(function (item) {
+        return item.objectName === objectName && Number(item.qty) !== 0;
+      });
+
+      if (query) {
+        rows = rows.filter(function (item) {
+          const text = (
+            String(item.article || '') + ' ' +
+            String(item.name || '') + ' ' +
+            String(item.type || '') + ' ' +
+            String(item.category || '')
+          ).toLowerCase();
+
+          return text.indexOf(query) !== -1;
+        });
+      }
+
+      rows.sort(function (a, b) {
+        return String(a.name).localeCompare(String(b.name), 'ru');
+      });
+
+      body.innerHTML = rows.map(function (item, idx) {
+        const key = getRowKeyByItem(item);
+
+        return `
+          <tr id="row-${idx}"
+              data-key="${escapeHtml(key)}"
+              data-object-name="${escapeHtml(item.objectName)}"
+              data-article="${escapeHtml(item.article)}"
+              data-name="${escapeHtml(item.name)}"
+              data-type="${escapeHtml(item.type)}"
+              data-category="${escapeHtml(item.category)}"
+              data-unit="${escapeHtml(item.unit)}"
+              data-stock="${item.qty}">
+            <td>${escapeHtml(item.article)}</td>
+            <td>${escapeHtml(item.name)}</td>
+            <td>${escapeHtml(item.type)}</td>
+            <td>${escapeHtml(item.category)}</td>
+            <td>${escapeHtml(item.unit)}</td>
+            <td>${item.qty}</td>
+            <td>
+              <select class="action-select"
+                      onchange="handleActionChange(${idx})"
+                      onfocus="activateInput(${idx}, 'action')"
+                      onblur="deactivateInput(${idx}, 'action')"
+                      id="action-${idx}">
+                <option value="">—</option>
+                <option value="Списание">Списание</option>
+                <option value="Приход">Приход</option>
+                <option value="Перемещение">Перемещение</option>
+              </select>
+            </td>
+            <td>
+              <input class="qty-input"
+                     type="number"
+                     min="0"
+                     step="1"
+                     id="qty-${idx}"
+                     oninput="validateRow(${idx})"
+                     onfocus="activateInput(${idx}, 'qty')"
+                     onblur="deactivateInput(${idx}, 'qty')">
+            </td>
+            <td>
+              <select class="dest-select"
+                      id="dest-${idx}"
+                      onchange="validateRow(${idx})"
+                      onfocus="activateInput(${idx}, 'dest')"
+                      onblur="deactivateInput(${idx}, 'dest')">
+                <option value="">—</option>
+                ${objects
+                  .filter(function (o) { return o !== objectName; })
+                  .map(function (o) {
+                    return '<option value="' + escapeHtml(o) + '">' + escapeHtml(o) + '</option>';
+                  })
+                  .join('')}
+              </select>
+            </td>
+            <td>
+              <input class="basis-input"
+                     type="text"
+                     id="basis-${idx}"
+                     oninput="validateRow(${idx})"
+                     onfocus="activateInput(${idx}, 'basis')"
+                     onblur="deactivateInput(${idx}, 'basis')"
+                     placeholder="">
+            </td>
+            <td class="error" id="error-${idx}"></td>
+          </tr>
+        `;
+      }).join('');
+
+      rows.forEach(function (item, idx) {
+        applySavedRowState(idx);
+      });
+
+      updateMeta(rows.length);
+    }
+
+    function handleActionChange(idx) {
+      const action = document.getElementById('action-' + idx).value;
+      const row = document.getElementById('row-' + idx);
+      const basis = document.getElementById('basis-' + idx);
+      const dest = document.getElementById('dest-' + idx);
+
+      row.classList.remove('row-writeoff', 'row-income', 'row-transfer');
+      basis.placeholder = '';
+      dest.disabled = true;
+      basis.disabled = false;
+
+      if (action === 'Списание') {
+        row.classList.add('row-writeoff');
+        basis.placeholder = 'Причина списания';
+        dest.value = '';
+      }
+
+      if (action === 'Приход') {
+        row.classList.add('row-income');
+        basis.placeholder = 'Откуда пришло';
+        dest.value = '';
+      }
+
+      if (action === 'Перемещение') {
+        row.classList.add('row-transfer');
+        basis.placeholder = 'Комментарий';
+        dest.disabled = false;
+      }
+
+      if (!action) {
+        basis.value = '';
+        dest.value = '';
+      }
+
+      saveVisibleRowState(idx);
+      validateRow(idx);
+    }
+
+    function validateRow(idx) {
+      const action = document.getElementById('action-' + idx).value;
+      const qty = Number(document.getElementById('qty-' + idx).value) || 0;
+      const basis = document.getElementById('basis-' + idx).value.trim();
+      const dest = document.getElementById('dest-' + idx).value;
+      const stock = Number(document.getElementById('row-' + idx).dataset.stock) || 0;
+      const errorEl = document.getElementById('error-' + idx);
+
+      let error = '';
+
+      if (!action) {
+        errorEl.textContent = '';
+        saveVisibleRowState(idx);
+        updateMeta(document.querySelectorAll('#inventoryBody tr').length);
+        return true;
+      }
+
+      if (qty <= 0) {
+        error = 'Укажи количество';
+      } else if ((action === 'Списание' || action === 'Перемещение') && qty > stock) {
+        error = 'Больше остатка';
+      } else if (action === 'Списание' && !basis) {
+        error = 'Причина?';
+      } else if (action === 'Приход' && !basis) {
+        error = 'Откуда приход?';
+      } else if (action === 'Перемещение' && !dest) {
+        error = 'Куда?';
+      }
+
+      errorEl.textContent = error;
+      saveVisibleRowState(idx);
+      updateMeta(document.querySelectorAll('#inventoryBody tr').length);
+      return !error;
+    }
+
+    function collectRows() {
+      const objectName = document.getElementById('objectSelect').value;
+      const rows = [];
+
+      Object.keys(rowState).forEach(function (key) {
+        const state = rowState[key];
+        if (!state) return;
+        if (state.objectName !== objectName) return;
+        if (!state.action) return;
+
+        rows.push({
+          article: state.article,
+          name: state.name,
+          type: state.type,
+          category: state.category,
+          unit: state.unit,
+          stockQty: state.stockQty,
+          action: state.action,
+          changeQty: state.changeQty,
+          destination: state.destination,
+          basis: state.basis
+        });
+      });
+
+      return rows;
+    }
+
+
+    function getPrintableRows() {
+      const objectName = document.getElementById('objectSelect').value;
+      const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+
+      if (!objectName) return [];
+
+      return allItems.filter(function (item) {
+        if (String(item.objectName || '').trim() !== objectName) return false;
+        if (!query) return true;
+
+        const hay = [
+          item.article,
+          item.name,
+          item.type,
+          item.category
+        ].join(' ').toLowerCase();
+
+        return hay.indexOf(query) !== -1;
+      }).sort(function (a, b) {
+        const ta = String(a.type || '');
+        const tb = String(b.type || '');
+        if (ta !== tb) return ta.localeCompare(tb, 'ru');
+        return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
+      });
+    }
+
+    function printInventorySheet() {
+      const objectName = document.getElementById('objectSelect').value;
+      if (!objectName) {
+        showError('Сначала выбери объект для печати.');
+        return;
+      }
+
+      const rows = getPrintableRows();
+      if (!rows.length) {
+        showError('Нет строк для печати по выбранному объекту.');
+        return;
+      }
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Инвентаризация — ${escapeHtml(objectName)}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              margin: 24px;
+              color: #111;
+            }
+            .title {
+              font-size: 22px;
+              font-weight: 700;
+              margin-bottom: 6px;
+            }
+            .sub {
+              font-size: 13px;
+              margin-bottom: 16px;
+              color: #444;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 12px;
+            }
+            th, td {
+              border: 1px solid #444;
+              padding: 8px 6px;
+              vertical-align: top;
+            }
+            th {
+              background: #f0f0f0;
+              text-align: left;
+            }
+            .notes {
+              height: 28px;
+            }
+            @media print {
+              body { margin: 12px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="title">Лист инвентаризации</div>
+          <div class="sub">Объект: ${escapeHtml(objectName)} | Позиций: ${rows.length}</div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width:14%;">Тип</th>
+                <th style="width:16%;">Категория</th>
+                <th style="width:40%;">Название</th>
+                <th style="width:10%;">Кол-во</th>
+                <th style="width:20%;">Отметки</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(function (row) {
+                return `
+                  <tr>
+                    <td>${escapeHtml(row.type)}</td>
+                    <td>${escapeHtml(row.category)}</td>
+                    <td>${escapeHtml(row.name)}</td>
+                    <td>${escapeHtml(row.qty)}</td>
+                    <td class="notes"></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        showError('Браузер заблокировал окно печати.');
+        return;
+      }
+
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(function () {
+        printWindow.print();
+      }, 250);
+    }
+
+    function getInventoryMoveObjectLetter(objectName) {
+      const value = String(objectName || '').trim();
+      if (!value) return 'О';
+
+      const isKnown = (objects || []).some(function (x) {
+        return String(x || '').trim().toLowerCase() === value.toLowerCase();
+      });
+      if (!isKnown) return 'О';
+
+      const norm = value.toLowerCase();
+      if (norm.indexOf('основ') !== -1 && norm.indexOf('склад') !== -1) return 'О';
+
+      return 'С';
+    }
+
+    function buildInventoryTransferReport(objectName, transferRows) {
+      const model = {
+        hashtag: '',
+        groups: []
+      };
+      const grouped = {};
+      (transferRows || []).forEach(function (row) {
+        const type = String(row.type || 'Без типа').trim() || 'Без типа';
+        if (!grouped[type]) grouped[type] = [];
+
+        grouped[type].push({
+          category: String(row.category || 'Без категории').trim() || 'Без категории',
+          name: String(row.name || '').trim(),
+          qty: Number(row.changeQty) || 0,
+          unit: String(row.unit || '').trim()
+        });
+      });
+
+      const sourceLetter = getInventoryMoveObjectLetter(objectName);
+      const destinationLetter = transferRows.length
+        ? getInventoryMoveObjectLetter(transferRows[0].destination)
+        : 'О';
+      model.hashtag = '#Перемещение' + sourceLetter + destinationLetter;
+
+      const typeNames = Object.keys(grouped).sort(function (a, b) {
+        return a.localeCompare(b, 'ru');
+      });
+
+      typeNames.forEach(function (typeName) {
+        const items = grouped[typeName]
+          .sort(function (a, b) {
+            return a.category.localeCompare(b.category, 'ru') || a.name.localeCompare(b.name, 'ru');
+          })
+          .map(function (item) {
+            return {
+              category: item.category,
+              name: item.name,
+              qty: String(item.qty),
+              unit: item.unit
+            };
+          });
+
+        model.groups.push({
+          type: typeName,
+          items: items
+        });
+      });
+
+      return model;
+    }
+
+    function renderInventoryTransferBlocks(model) {
+      const groupsHtml = (model.groups || []).map(function (group) {
+        const byCategory = {};
+        (group.items || []).forEach(function (item) {
+          const categoryName = String(item.category || 'Без категории').trim() || 'Без категории';
+          if (!byCategory[categoryName]) byCategory[categoryName] = [];
+          byCategory[categoryName].push(item);
+        });
+
+        const categoryHtml = Object.keys(byCategory).sort(function (a, b) {
+          return a.localeCompare(b, 'ru');
+        }).map(function (categoryName) {
+          const rowsHtml = byCategory[categoryName].map(function (item) {
+            return '<div style="display:grid; grid-template-columns: 1fr 82px; gap:6px; margin-top:3px; padding:2px 0; border-bottom:1px solid #e5eaf2;">' +
+              '<div style="padding:1px 0; font-size:24px; line-height:1.2;">' + escapeHtml(item.name) + '</div>' +
+              '<div style="padding:1px 0; text-align:right; white-space:nowrap; font-size:24px; line-height:1.2; font-weight:600;">' + escapeHtml(item.qty + (item.unit ? ' ' + item.unit : '')) + '</div>' +
+            '</div>';
+          }).join('');
+
+          return '<div style="margin-top:8px; margin-left:14px;">' +
+            '<div style="font-weight:700; margin-bottom:3px; font-size:16px; line-height:1.2; color:#2f3640;">' + escapeHtml(categoryName) + '</div>' +
+            rowsHtml +
+          '</div>';
+        }).join('');
+
+        return '<div style="margin-top:10px;">' +
+          '<div style="font-weight:700; margin-bottom:4px; font-size:16px; line-height:1.2; color:#2f3640;">' + escapeHtml(group.type) + '</div>' +
+          categoryHtml +
+        '</div>';
+      }).join('');
+
+      return '<div style="margin-top:8px; border:1px solid #d8e0ef; border-radius:10px; padding:10px; background:#fff; max-width:760px;">' +
+        groupsHtml +
+      '</div>';
+    }
+    function openInventoryTransferReportPanel(model) {
+      const reportWindow = window.open('', '_blank', 'width=860,height=900');
+      if (!reportWindow) return false;
+
+      const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Отчет перемещения</title></head>' +
+        '<body style="margin:0; background:#fff; font-family:Arial,sans-serif; padding:12px;">' +
+        '<div style="font-size:20px; font-weight:700;">Что переместили</div>' +
+        renderInventoryTransferBlocks(model) +
+        '</body></html>';
+
+      reportWindow.document.open();
+      reportWindow.document.write(html);
+      reportWindow.document.close();
+      reportWindow.focus();
+      return true;
+    }
+
+    function submitInventory() {
+      const objectName = document.getElementById('objectSelect').value;
+
+      if (!objectName) {
+        alert('Сначала выбери объект.');
+        return;
+      }
+
+      const trs = document.querySelectorAll('#inventoryBody tr');
+      let ok = true;
+
+      trs.forEach(function (tr, idx) {
+        if (!validateRow(idx)) ok = false;
+      });
+
+      const rows = collectRows();
+      const transferRows = rows.filter(function (row) { return row.action === 'Перемещение'; });
+
+      if (!rows.length) {
+        alert('Нет строк для проведения.');
+        return;
+      }
+
+      if (!ok) {
+        alert('Исправь ошибки в видимых строках формы.');
+        return;
+      }
+
+      document.getElementById('inventoryReport').innerHTML = '';
+
+      google.script.run
+        .withSuccessHandler(function (msg) {
+          if (!transferRows.length) {
+            alert(msg);
+            google.script.host.close();
+            return;
+          }
+
+          const report = buildInventoryTransferReport(objectName, transferRows);
+          const opened = openInventoryTransferReportPanel(report);
+          document.getElementById('inventoryReport').innerHTML =
+            '<div class="ok">' + escapeHtml(msg) + '</div>' +
+            '<div style="margin-top:8px;">' + (opened ? 'Открыт отчет в новой панели.' : 'Не удалось открыть новую панель (всплывающее окно заблокировано).') + '</div>' +
+            renderInventoryTransferBlocks(report);
+        })
+        .withFailureHandler(function (err) {
+          alert(err.message || err);
+        })
+        .saveInventoryForm({
+          objectName: objectName,
+          rows: rows
+        });
+    }
+
+    function renderRequestRows() {
+      const body = document.getElementById('requestBody');
+
+      body.innerHTML = Array.from({ length: 15 }).map(function (_, idx) {
+        return `
+          <tr>
+            <td>${idx + 1}</td>
+            <td><input type="text" id="req-name-${idx}" placeholder="Название товара"></td>
+            <td>
+              <select id="req-unit-${idx}">
+                <option value="">Выбери ед. изм.</option>
+                ${units.map(function (u) {
+                  return '<option value="' + escapeHtml(u) + '">' + escapeHtml(u) + '</option>';
+                }).join('')}
+              </select>
+            </td>
+            <td><input type="number" min="0" step="0.001" id="req-qty-${idx}" oninput="updateRequestRowAmount(${idx})"></td>
+            <td><input type="number" min="0" step="0.01" id="req-price-${idx}" oninput="updateRequestRowAmount(${idx})"></td>
+            <td class="number" id="req-amount-${idx}"></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function updateRequestRowAmount(idx) {
+      const qty = Number(document.getElementById(`req-qty-${idx}`).value) || 0;
+      const price = Number(document.getElementById(`req-price-${idx}`).value) || 0;
+      const amount = qty * price;
+
+      document.getElementById(`req-amount-${idx}`).textContent =
+        amount > 0
+          ? amount.toLocaleString('ru-RU', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })
+          : '';
+    }
+
+    function collectRequestRows() {
+      const rows = [];
+
+      for (let i = 0; i < 15; i++) {
+        const name = document.getElementById(`req-name-${i}`).value.trim();
+        const unit = document.getElementById(`req-unit-${i}`).value;
+        const qty = document.getElementById(`req-qty-${i}`).value;
+        const price = document.getElementById(`req-price-${i}`).value;
+
+        if (!name && !unit && !qty && !price) continue;
+
+        rows.push({
+          name: name,
+          unit: unit,
+          qty: Number(qty),
+          price: Number(price)
+        });
+      }
+
+      return rows;
+    }
+
+    function clearRequestForm() {
+      document.getElementById('requestObjectSelect').value = '';
+      document.getElementById('requestCommonBasis').value = '';
+
+      for (let i = 0; i < 15; i++) {
+        document.getElementById(`req-name-${i}`).value = '';
+        document.getElementById(`req-unit-${i}`).value = '';
+        document.getElementById(`req-qty-${i}`).value = '';
+        document.getElementById(`req-price-${i}`).value = '';
+        document.getElementById(`req-amount-${i}`).textContent = '';
+      }
+
+      document.getElementById('requestMessage').innerHTML = '';
+    }
+
+    function submitRequest() {
+      const objectName = document.getElementById('requestObjectSelect').value;
+      const commonBasis = document.getElementById('requestCommonBasis').value.trim();
+      const rows = collectRequestRows();
+
+      if (!objectName) {
+        alert('Выбери объект.');
+        return;
+      }
+
+      if (!commonBasis) {
+        alert('Укажи общее основание.');
+        return;
+      }
+
+      if (!rows.length) {
+        alert('Нет строк для отправки.');
+        return;
+      }
+
+      if (rows.length > 15) {
+        alert('В одном запросе можно отправить не более 15 наименований.');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function (msg) {
+          document.getElementById('requestMessage').innerHTML =
+            '<div class="ok">' + escapeHtml(msg) + '</div>';
+          clearRequestForm();
+        })
+        .withFailureHandler(function (err) {
+          document.getElementById('requestMessage').innerHTML =
+            '<div class="error">' + escapeHtml(err.message || err) + '</div>';
+        })
+        .saveNewItemRequest({
+          objectName: objectName,
+          commonBasis: commonBasis,
+          rows: rows
+        });
+    }
+
+    function activateInput(idx, type) {
+      const row = document.getElementById('row-' + idx);
+      if (row) row.classList.add('active-row');
+
+      const el = document.getElementById(type + '-' + idx);
+      if (el) el.classList.add('input-focus');
+    }
+
+    function deactivateInput(idx, type) {
+      const el = document.getElementById(type + '-' + idx);
+      if (el) el.classList.remove('input-focus');
+
+      const row = document.getElementById('row-' + idx);
+      if (!row) return;
+
+      setTimeout(function () {
+        if (!row.querySelector(':focus')) {
+          row.classList.remove('active-row');
+        }
+      }, 50);
+    }
+
+    function showError(err) {
+      document.getElementById('loading').textContent =
+        'Ошибка загрузки: ' + (err.message || err);
+    }
+
+    function showRequestError(err) {
+      document.getElementById('requestMessage').innerHTML =
+        '<div class="error">Ошибка загрузки данных для запроса: ' + escapeHtml(err.message || err) + '</div>';
+    }
+
+    init();
+  </script>
+</body>
+</html>

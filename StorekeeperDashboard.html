@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #f5f7fb; color: #222; }
+    .wrap { padding: 18px 20px; }
+    .header { display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:14px; }
+    .title { font-size:28px; font-weight:700; }
+    .subtitle { font-size:13px; color:#5f6b7a; margin-top:4px; }
+    .tabs, .subtabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+    .tab, .subtab { border:none; border-radius:999px; padding:10px 14px; background:#e9edf5; cursor:pointer; font-weight:700; font-size:14px; }
+    .tab.active, .subtab.active { background:#2f6fed; color:#fff; }
+    .view, .subview { display:none; }
+    .view.active, .subview.active { display:block; }
+    .card { background:#fff; border-radius:14px; padding:16px; box-shadow:0 2px 10px rgba(0,0,0,0.08); margin-bottom:14px; }
+    .section-title { font-size:18px; font-weight:700; margin-bottom:8px; }
+    .section-sub { font-size:12px; color:#6b7280; margin-bottom:12px; }
+    .grid { display:grid; gap:12px; }
+    .grid-2 { grid-template-columns:repeat(2,1fr); }
+    .grid-3 { grid-template-columns:repeat(3,1fr); }
+    .grid-4 { grid-template-columns:repeat(4,1fr); }
+    .field label { display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:#3f4b5f; }
+    input[type="text"], input[type="number"], select, textarea { width:100%; box-sizing:border-box; border:1px solid #cfd6e4; border-radius:8px; padding:9px 10px; font-size:14px; background:#fff; }
+    textarea { min-height:90px; resize:vertical; }
+    .btn { border:none; border-radius:10px; padding:11px 18px; font-size:14px; cursor:pointer; font-weight:700; display:inline-flex; align-items:center; justify-content:center; width:auto; white-space:nowrap; }
+    .btn-primary { background:#2f6fed; color:#fff; }
+    .btn-secondary { background:#e9edf5; color:#111827; }
+    .btn-success { background:#16a34a; color:#fff; }
+    .btn-danger { background:#dc2626; color:#fff; }
+    .btn-row { display:flex; gap:10px; flex-wrap:nowrap; align-items:center; margin-top:12px; overflow-x:auto; }
+    .kpi-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:14px; }
+    .kpi { background:#fff; border-radius:14px; padding:14px 16px; box-shadow:0 2px 10px rgba(0,0,0,0.08); }
+    .kpi-label { font-size:12px; color:#6b7280; font-weight:700; text-transform:uppercase; }
+    .kpi-value { font-size:18px; font-weight:700; margin-top:8px; }
+    .table-wrap { background:#fff; border-radius:14px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.08); }
+    .scroll { max-height:520px; overflow:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { border-bottom:1px solid #e5e7eb; padding:8px 8px; vertical-align:top; }
+    th { background:#eef3fb; text-align:left; position:sticky; top:0; z-index:1; }
+    tr.clickable { cursor:pointer; }
+    tr.clickable.selected { background:#e8f0ff; }
+    .muted { color:#6b7280; }
+    .ok { color:#166534; font-weight:700; }
+    .danger { color:#b91c1c; font-weight:700; }
+    .split { display:grid; grid-template-columns:1.05fr 0.95fr; gap:14px; align-items:start; }
+    .small-table .scroll { max-height: 320px; }
+    .pill { display:inline-block; padding:4px 8px; border-radius:999px; background:#eef3fb; font-size:12px; font-weight:700; }
+    .search-box { position:relative; width:100%; }
+    .search-box input { width:100%; height:44px; padding:0 14px; padding-right:96px; border:1px solid #cfd6e4; border-radius:12px; background:#fff; font-size:14px; transition:border-color 0.2s ease, box-shadow 0.2s ease; }
+    .search-box input::placeholder { color:#8a94a6; }
+    .search-box input:focus { outline:none; border-color:#2f6fed; box-shadow:0 0 0 3px rgba(47,111,237,0.14); }
+    .search-count { position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:12px; color:#6b7280; pointer-events:none; white-space:nowrap; }
+    tr.selected-row { background:#e8f0ff; }
+    #editSearchBody tr { cursor:pointer; }
+    #editSearchBody tr:hover { background:#f5f8ff; }
+    @media (max-width: 1100px) {
+      .split, .grid-4, .grid-3, .grid-2, .kpi-grid { grid-template-columns:1fr; }
+      .btn-row { flex-wrap:wrap; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div>
+        <div class="title">Дашборд кладовщика</div>
+        <div class="subtitle">Операции с товаром, ответственные, карточки товаров и справочники</div>
+      </div>
+      <button class="btn btn-secondary" onclick="google.script.host.close()">Закрыть</button>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Номенклатура</div><div class="kpi-value" id="kpiCatalog">0</div></div>
+      <div class="kpi"><div class="kpi-label">Остатки</div><div class="kpi-value" id="kpiBalances">0</div></div>
+      <div class="kpi"><div class="kpi-label">Ответственные</div><div class="kpi-value" id="kpiAssigned">0</div></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-view="operations" onclick="setView('operations')">Операции</button>
+      <button class="tab" data-view="bulk-new" onclick="setView('bulk-new')">Массовое внесение</button>
+      <button class="tab" data-view="mass-move" onclick="setView('mass-move')">Массовое перемещение</button>
+      <button class="tab" data-view="responsibility" onclick="setView('responsibility')">Ответственный за инструмент</button>
+      <button class="tab" data-view="edit" onclick="setView('edit')">Редактор товара</button>
+      <button class="tab" data-view="directory" onclick="setView('directory')">Справочники</button>
+      <button class="tab" data-view="requests" onclick="setView('requests')">Запросы</button>
+    </div>
+
+    <div id="view-operations" class="view active">
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="section-title">Выбор товара</div>
+            <div class="section-sub">Найди существующий товар или включи режим нового товара</div>
+            <div class="grid grid-2">
+              <div class="field">
+                <label for="opSearch">Поиск товара</label>
+                <input id="opSearch" type="text" placeholder="Артикул или название" oninput="renderOperationItems()">
+              </div>
+              <div class="field" style="display:flex;align-items:end;">
+                <label><input type="checkbox" id="newItemMode" onchange="toggleNewItemMode()"> Новый товар</label>
+              </div>
+            </div>
+
+            <div class="table-wrap" style="margin-top:12px;">
+              <div class="scroll" style="max-height:280px;">
+                <table>
+                  <thead>
+                    <tr><th>Артикул</th><th>Название</th><th>Тип</th><th>Категория</th><th>Ед.</th><th>Цена</th></tr>
+                  </thead>
+                  <tbody id="opItemsBody"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="muted" id="selectedItemMeta" style="margin-top:10px;">Товар не выбран</div>
+            <div class="card" id="selectedItemLocationsCard" style="margin-top:12px; display:none;">
+              <div class="section-title">Где находится товар сейчас</div>
+              <div class="section-sub">Текущие остатки по объектам</div>
+              <div id="selectedItemLocations" class="muted"></div>
+            </div>
+          </div>
+
+          <div class="card" id="newItemCard" style="display:none;">
+            <div class="section-title">Новый товар</div>
+            <div class="section-sub">Заполняется только если включен режим нового товара</div>
+            <div class="grid grid-2">
+              <div class="field"><label>Название</label><input id="newName" type="text"></div>
+              <div class="field"><label>Тип</label><select id="newType" onchange="fillCategoriesSelect('newType','newCategory')"></select></div>
+              <div class="field"><label>Категория</label><select id="newCategory"></select></div>
+              <div class="field"><label>Ед. изм.</label><select id="newUnit"></select></div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="section-title">Операция</div>
+            <div class="section-sub">Добавить, списать или переместить товар</div>
+
+            <div class="grid grid-2">
+              <div class="field">
+                <label>Действие</label>
+                <select id="opAction" onchange="onOperationChange()">
+                  <option value="Приход">Добавить / Приход</option>
+                  <option value="Списание">Списание</option>
+                  <option value="Перемещение">Перемещение</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Объект</label>
+                <select id="opObject"></select>
+              </div>
+              <div class="field" id="destinationField" style="display:none;">
+                <label>Куда переместить</label>
+                <select id="opDestination"></select>
+              </div>
+              <div class="field">
+                <label>Количество</label>
+                <input id="opQty" type="number" min="0" step="0.001">
+              </div>
+              <div class="field" id="priceField">
+                <label>Цена прихода</label>
+                <input id="opPrice" type="number" min="0" step="0.01">
+              </div>
+              <div class="field">
+                <label>Основание</label>
+                <input id="opBasis" type="text" placeholder="Например: закупка, выдача на объект, брак">
+              </div>
+              <div class="field" style="grid-column:1 / -1;">
+                <label>Комментарий</label>
+                <input id="opComment" type="text" placeholder="Необязательно">
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="submitOperation()">Провести операцию</button>
+              <button class="btn btn-secondary" onclick="clearOperationForm()">Очистить</button>
+              <button class="btn btn-secondary" onclick="refreshAllStorekeeperData()">Обновить данные</button>
+            </div>
+            <div id="opMessage" style="margin-top:10px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-bulk-new" class="view">
+      <div class="card">
+        <div class="section-title">Массовое внесение новых позиций</div>
+        <div class="section-sub">До 15 новых товаров сразу, с автоматическим созданием артикулов и приходов</div>
+        <div class="grid grid-2" style="margin-bottom:12px;">
+          <div class="field"><label>Объект</label><select id="bulkObject"></select></div>
+          <div class="field"><label>Общее основание</label><input id="bulkBasis" type="text" placeholder="Например: закупка в магазине"></div>
+        </div>
+        <div class="table-wrap">
+          <div class="scroll" style="max-height:520px;">
+            <table>
+              <thead><tr><th>№</th><th>Название</th><th>Тип</th><th>Категория</th><th>Ед. изм.</th><th>Кол-во</th><th>Цена</th></tr></thead>
+              <tbody id="bulkNewBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="clearBulkNewForm()">Очистить</button>
+          <button class="btn btn-success" onclick="submitBulkNewItems()">Внести позиции</button>
+        </div>
+        <div id="bulkNewMessage" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <div id="view-mass-move" class="view">
+      <div class="card">
+        <div class="section-title">Массовое перемещение товара</div>
+        <div class="section-sub">Добавляй товары с выбранного объекта в список, указывай количество и при необходимости нового ответственного</div>
+        <div class="grid grid-4">
+          <div class="field"><label>С объекта</label><select id="massMoveSource" onchange="renderMassMoveAvailable()"></select></div>
+          <div class="field"><label>На объект</label><select id="massMoveDestination"></select></div>
+          <div class="field"><label>Фильтр по типу</label><select id="massMoveType" onchange="renderMassMoveAvailable()"></select></div>
+          <div class="field"><label>Ответственный сейчас</label><select id="massMoveCurrentEmployee" onchange="renderMassMoveAvailable()"></select></div>
+          <div class="field"><label>Поиск</label><input id="massMoveSearch" type="text" oninput="renderMassMoveAvailable()" placeholder="Артикул или название"></div>
+          <div class="field"><label>Новый ответственный</label><select id="massMoveEmployee"></select></div>
+          <div class="field" style="grid-column: span 2;"><label>Основание</label><input id="massMoveBasis" type="text" placeholder="Например: перемещение партии"></div>
+        </div>
+
+        <div class="split" style="margin-top:12px;">
+          <div>
+            <div class="section-title" style="font-size:16px;">Доступные позиции</div>
+            <div class="table-wrap">
+              <div class="scroll" style="max-height:420px;">
+                <table>
+                  <thead><tr><th>Объект</th><th>Тип</th><th>Категория</th><th>Название</th><th>Кол-во</th><th>Ответственный</th></tr></thead>
+                  <tbody id="massMoveAvailableBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="section-title" style="font-size:16px;">Список перемещения</div>
+            <div class="table-wrap">
+              <div class="scroll" style="max-height:420px;">
+                <table>
+                  <thead><tr><th>Название</th><th>Есть</th><th>К перемещению</th><th>Был ответственный</th><th></th></tr></thead>
+                  <tbody id="massMoveSelectedBody"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-secondary" onclick="clearMassMoveSelection()">Очистить</button>
+              <button class="btn btn-primary" onclick="submitMassMove()">Переместить</button>
+            </div>
+            <div id="massMoveMessage" style="margin-top:10px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-responsibility" class="view">
+      <div class="card">
+        <div class="section-title">Ответственный за инструмент</div>
+        <div class="section-sub">Назначение, переназначение и текущие ответственные по инструменту</div>
+
+        <div class="subtabs">
+          <button class="subtab active" data-subview="current" onclick="setRespView('current')">Текущие ответственные</button>
+          <button class="subtab" data-subview="assign" onclick="setRespView('assign')">Назначить</button>
+          <button class="subtab" data-subview="reassign" onclick="setRespView('reassign')">Переназначить</button>
+        </div>
+
+        <div id="resp-current" class="subview active">
+          <div class="grid grid-4" style="margin-bottom:12px;">
+            <div class="field"><label>Поиск</label><input id="respCurrentSearch" type="text" oninput="renderCurrentResponsibilityTable()"></div>
+            <div class="field"><label>Объект</label><select id="respCurrentObject" onchange="renderCurrentResponsibilityTable()"></select></div>
+            <div class="field"><label>Тип</label><select id="respCurrentType" onchange="renderCurrentResponsibilityTable()"></select></div>
+            <div class="field"><label>Ответственный</label><select id="respCurrentEmployee" onchange="renderCurrentResponsibilityTable()"></select></div>
+          </div>
+          <div class="table-wrap">
+            <div class="scroll">
+              <table>
+                <thead><tr><th>Ответственный</th><th>Объект</th><th>Артикул</th><th>Название</th><th>Тип</th><th>Категория</th><th>Кол-во</th></tr></thead>
+                <tbody id="respCurrentBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="resp-assign" class="subview">
+          <div class="grid grid-4" style="margin-bottom:12px;">
+            <div class="field"><label>Поиск</label><input id="respAssignSearch" type="text" oninput="renderAssignAvailableTable()"></div>
+            <div class="field"><label>Объект</label><select id="respAssignObject" onchange="renderAssignAvailableTable()"></select></div>
+            <div class="field"><label>Тип</label><select id="respAssignType" onchange="renderAssignAvailableTable()"></select></div>
+            <div class="field"><label>Ответственный</label><select id="respAssignEmployee"></select></div>
+          </div>
+          <div class="split">
+            <div>
+              <div class="section-title" style="font-size:16px;">Без назначенного сотрудника</div>
+              <div class="table-wrap"><div class="scroll"><table>
+                <thead><tr><th>Объект</th><th>Тип</th><th>Категория</th><th>Название</th><th>Кол-во</th></tr></thead>
+                <tbody id="respAssignAvailableBody"></tbody>
+              </table></div></div>
+            </div>
+            <div>
+              <div class="section-title" style="font-size:16px;">Выбрано к назначению</div>
+              <div class="table-wrap"><div class="scroll"><table>
+                <thead><tr><th>Объект</th><th>Название</th><th>Кол-во</th><th></th></tr></thead>
+                <tbody id="respAssignSelectedBody"></tbody>
+              </table></div></div>
+              <div class="btn-row">
+                <button class="btn btn-secondary" onclick="clearRespAssignSelection()">Очистить</button>
+                <button class="btn btn-primary" onclick="submitResponsibilityAssignment()">Назначить</button>
+              </div>
+              <div id="respAssignMessage" style="margin-top:10px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="resp-reassign" class="subview">
+          <div class="grid grid-4" style="margin-bottom:12px;">
+            <div class="field"><label>Поиск</label><input id="respReassignSearch" type="text" oninput="renderReassignAvailableTable()"></div>
+            <div class="field"><label>Объект</label><select id="respReassignObject" onchange="renderReassignAvailableTable()"></select></div>
+            <div class="field"><label>Тип</label><select id="respReassignType" onchange="renderReassignAvailableTable()"></select></div>
+            <div class="field"><label>Старый ответственный</label><select id="respReassignCurrentEmployee" onchange="renderReassignAvailableTable()"></select></div>
+            <div class="field"><label>Новый ответственный</label><select id="respReassignEmployee"></select></div>
+          </div>
+          <div class="split">
+            <div>
+              <div class="section-title" style="font-size:16px;">С назначенным ответственным</div>
+              <div class="table-wrap"><div class="scroll"><table>
+                <thead><tr><th>Текущий ответственный</th><th>Объект</th><th>Тип</th><th>Категория</th><th>Название</th><th>Кол-во</th></tr></thead>
+                <tbody id="respReassignAvailableBody"></tbody>
+              </table></div></div>
+            </div>
+            <div>
+              <div class="section-title" style="font-size:16px;">Выбрано к переназначению</div>
+              <div class="table-wrap"><div class="scroll"><table>
+                <thead><tr><th>Название</th><th>Кто ответственный</th><th>Объект</th><th>Кол-во</th><th></th></tr></thead>
+                <tbody id="respReassignSelectedBody"></tbody>
+              </table></div></div>
+              <div class="btn-row">
+                <button class="btn btn-secondary" onclick="clearRespReassignSelection()">Очистить</button>
+                <button class="btn btn-primary" onclick="submitResponsibilityReassignment()">Переназначить</button>
+              </div>
+              <div id="respReassignMessage" style="margin-top:10px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-edit" class="view">
+      <div class="split">
+        <div>
+          <div class="card">
+            <div class="section-title">Выбор товара для редактирования</div>
+            <div class="section-sub">Артикул не меняется</div>
+
+            <div class="field">
+              <label for="editSearch">Поиск товара</label>
+              <div class="search-box">
+                <input id="editSearch" type="text" placeholder="Поиск по артикулу, названию, типу, категории" oninput="renderEditSearchResults()" autocomplete="off">
+                <div id="editSearchCount" class="search-count"></div>
+              </div>
+            </div>
+
+            <div class="table-wrap small-table" style="margin-top:12px;">
+              <div class="scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Артикул</th>
+                      <th>Название</th>
+                      <th>Тип</th>
+                      <th>Категория</th>
+                    </tr>
+                  </thead>
+                  <tbody id="editSearchBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="meta" id="editSelectedMeta" style="margin-top:10px;">Товар не выбран</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="section-title">Карточка товара</div>
+            <div class="section-sub">Редактирование и полная информация по выбранной позиции</div>
+
+            <div class="grid grid-2">
+              <div class="field">
+                <label for="editArticle">Артикул</label>
+                <input id="editArticle" type="text" disabled>
+              </div>
+              <div class="field">
+                <label for="editName">Название</label>
+                <input id="editName" type="text">
+              </div>
+              <div class="field">
+                <label for="editType">Тип</label>
+                <select id="editType" onchange="handleEditTypeChange()"></select>
+              </div>
+              <div class="field">
+                <label for="editCategory">Категория</label>
+                <select id="editCategory"></select>
+              </div>
+              <div class="field">
+                <label for="editUnit">Ед. изм.</label>
+                <select id="editUnit"></select>
+              </div>
+              <div class="field">
+                <label for="editPrice">Цена</label>
+                <input id="editPrice" type="number" min="0" step="0.01">
+              </div>
+              <div class="field">
+                <label for="editActive">Активен</label>
+                <select id="editActive">
+                  <option value="Да">Да</option>
+                  <option value="Нет">Нет</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="editComment">Комментарий</label>
+                <input id="editComment" type="text">
+              </div>
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-success" onclick="saveEditCard()">Сохранить карточку</button>
+              <button class="btn btn-secondary" onclick="reloadCurrentItemCard()">Обновить карточку</button>
+            </div>
+
+            <div id="editMessage" style="margin-top:10px;"></div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">Остатки по объектам</div>
+            <div class="table-wrap">
+              <div class="scroll" style="max-height:220px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Объект</th>
+                      <th class="num">Количество</th>
+                      <th class="num">Цена</th>
+                      <th class="num">Сумма</th>
+                    </tr>
+                  </thead>
+                  <tbody id="itemCardBalancesBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">Последние движения</div>
+            <div class="table-wrap">
+              <div class="scroll" style="max-height:260px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Дата</th>
+                      <th>Операция</th>
+                      <th class="num">Кол-во</th>
+                      <th class="num">Цена</th>
+                      <th>Откуда</th>
+                      <th>Куда</th>
+                      <th>Основание</th>
+                      <th>Сотрудник</th>
+                      <th>Комментарий</th>
+                    </tr>
+                  </thead>
+                  <tbody id="itemCardMovementsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="section-title">Текущий ответственный</div>
+            <div class="table-wrap">
+              <div class="scroll" style="max-height:220px;">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Сотрудник</th>
+                      <th>Объект</th>
+                      <th class="num">Кол-во</th>
+                      <th>Последняя выдача</th>
+                    </tr>
+                  </thead>
+                  <tbody id="itemCardAssignedBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="view-directory" class="view">
+      <div class="grid grid-3">
+        <div class="card">
+          <div class="section-title">Новый объект</div>
+          <div class="field"><label>Название объекта</label><input id="dirObjectName" type="text" placeholder="Например: Склад 2"></div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="saveDirectoryItem('object')">Добавить объект</button></div>
+          <div class="field" style="margin-top:12px;"><label>Удалить объект</label><select id="dirDeleteObject"></select></div>
+          <div class="btn-row"><button class="btn btn-secondary" onclick="deleteDirectoryItem('object')">Удалить объект</button></div>
+        </div>
+        <div class="card">
+          <div class="section-title">Новый сотрудник</div>
+          <div class="field"><label>Сотрудник</label><input id="dirEmployeeName" type="text" placeholder="Например: Иванов Иван"></div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="saveDirectoryItem('employee')">Добавить сотрудника</button></div>
+          <div class="field" style="margin-top:12px;"><label>Удалить сотрудника</label><select id="dirDeleteEmployee"></select></div>
+          <div class="btn-row"><button class="btn btn-secondary" onclick="deleteDirectoryItem('employee')">Удалить сотрудника</button></div>
+        </div>
+        <div class="card">
+          <div class="section-title">Новый тип</div>
+          <div class="field"><label>Название типа</label><input id="dirTypeName" type="text" placeholder="Например: Спецодежда"></div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="saveDirectoryItem('type')">Добавить тип</button></div>
+        </div>
+        <div class="card">
+          <div class="section-title">Новая категория</div>
+          <div class="field"><label>Тип</label><select id="dirCategoryType"></select></div>
+          <div class="field"><label>Категория</label><input id="dirCategoryName" type="text" placeholder="Например: Лестницы"></div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="saveDirectoryItem('category')">Добавить категорию</button></div>
+        </div>
+        <div class="card">
+          <div class="section-title">Новая ед. изм.</div>
+          <div class="field"><label>Ед. изм.</label><input id="dirUnitName" type="text" placeholder="Например: бухта"></div>
+          <div class="btn-row"><button class="btn btn-primary" onclick="saveDirectoryItem('unit')">Добавить ед. изм.</button></div>
+        </div>
+      </div>
+      <div id="directoryMessage"></div>
+    </div>
+
+    <div id="view-requests" class="view">
+      <div class="card">
+        <div class="section-title">Запросы на новые позиции</div>
+        <div class="section-sub">Подтверждай новые позиции из запросов прорабов. Для каждой строки выбери тип и категорию.</div>
+        <div class="btn-row" style="margin-bottom:12px;">
+          <button class="btn btn-secondary" onclick="loadRequestsTab()">Обновить запросы</button>
+          <button class="btn btn-danger" onclick="deleteSelectedRequests()">Удалить выбранные</button>
+          <button class="btn btn-success" onclick="approveSelectedRequests()">Подтвердить выбранные</button>
+        </div>
+        <div id="requestsMessage" style="margin-bottom:10px;"></div>
+        <div class="table-wrap">
+          <div class="scroll" style="max-height:520px;">
+            <table>
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="requestsSelectAll" onchange="toggleAllRequests(this.checked)"></th>
+                  <th>Дата</th><th>Автор</th><th>Объект</th><th>Основание</th><th>Запрошено</th><th>Ед.</th><th>Кол-во</th><th>Цена</th><th>Тип</th><th>Категория</th><th>Итоговое название</th><th>Комментарий</th>
+                </tr>
+              </thead>
+              <tbody id="requestsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+let initData = {};
+let currentView = 'operations';
+let selectedOperationArticle = '';
+let currentRespView = 'current';
+let requestsData = { rows: [], types: [], categoriesByType: {} };
+const BULK_NEW_ROWS_COUNT = 15;
+let respAssignSelected = [];
+let respReassignSelected = [];
+let massMoveSelected = [];
+let selectedEditArticle = '';
+let currentItemCardData = null;
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function handleEditTypeChange() {
+  fillCategoriesSelect('editType', 'editCategory');
+}
+
+function escapeJs(value) {
+  return String(value == null ? '' : value)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/"/g, '&quot;')
+    .replace(/\n/g, ' ');
+}
+function findCatalogByArticle(article) {
+  return (initData.catalogItems || []).find(function (item) {
+    return normalizeText(item.article) === normalizeText(article);
+  }) || null;
+}
+
+function normalizeText(value) { return String(value || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim(); }
+function formatQty(value) { const n = Number(value || 0); return Number.isFinite(n) ? n.toLocaleString('ru-RU', { maximumFractionDigits: 3 }) : '0'; }
+function formatMoney(value) { const n = Number(value || 0); return Number.isFinite(n) ? n.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0,00'; }
+
+function setView(viewName) {
+  currentView = viewName;
+  document.querySelectorAll('.tab').forEach(btn => btn.classList.toggle('active', btn.dataset.view === viewName));
+  document.querySelectorAll('.view').forEach(view => view.classList.remove('active'));
+  document.getElementById('view-' + viewName).classList.add('active');
+}
+
+function setRespView(viewName) {
+  currentRespView = viewName;
+  document.querySelectorAll('.subtab').forEach(btn => btn.classList.toggle('active', btn.dataset.subview === viewName));
+  document.querySelectorAll('.subview').forEach(v => v.classList.remove('active'));
+  document.getElementById('resp-' + viewName).classList.add('active');
+}
+
+function fillSelect(id, placeholder, values, selectedValue) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const arr = values || [];
+  el.innerHTML = '<option value="">' + escapeHtml(placeholder || 'Выбери') + '</option>' +
+    arr.map(function(v){
+      const val = String(v == null ? '' : v);
+      return '<option value="' + escapeHtml(val) + '">' + escapeHtml(val || placeholder || '—') + '</option>';
+    }).join('');
+  if (selectedValue !== undefined && selectedValue !== null) el.value = String(selectedValue);
+}
+
+function fillCategoriesSelect(typeId, categoryId, selectedValue) {
+  const type = document.getElementById(typeId).value;
+  const values = (initData.categoriesByType && initData.categoriesByType[type]) || [];
+  fillSelect(categoryId, 'Выбери категорию', values, selectedValue);
+}
+
+function refreshAllStorekeeperData() {
+  google.script.run
+    .withSuccessHandler(function (data) {
+      initData = data || {};
+      document.getElementById('kpiCatalog').textContent = (initData.catalogItems || []).length;
+      document.getElementById('kpiBalances').textContent = (initData.balances || []).filter(r => Number(r.qty) > 0).length;
+      document.getElementById('kpiAssigned').textContent = initData.assignedCount || 0;
+
+      fillSelect('newType', 'Выбери тип', initData.types);
+      fillSelect('newUnit', 'Выбери ед. изм.', initData.units);
+      fillSelect('opObject', 'Выбери объект', initData.objects);
+      fillSelect('opDestination', 'Выбери объект', initData.objects);
+      fillSelect('bulkObject', 'Выбери объект', initData.objects);
+      fillSelect('massMoveSource', 'Выбери объект', initData.objects);
+      fillSelect('massMoveDestination', 'Выбери объект', initData.objects);
+      fillSelect('massMoveType', 'Все типы', initData.types);
+      fillSelect('massMoveCurrentEmployee', 'Все ответственные', initData.employees);
+      fillSelect('massMoveEmployee', 'Оставить прежнего', [''].concat(initData.employees || []));
+      fillSelect('respCurrentObject', 'Все объекты', initData.objects);
+      fillSelect('respCurrentType', 'Все типы', initData.types);
+      fillSelect('respCurrentEmployee', 'Все ответственные', initData.employees);
+      fillSelect('respAssignObject', 'Все объекты', initData.objects);
+      fillSelect('respAssignType', 'Все типы', initData.types);
+      fillSelect('respAssignEmployee', 'Выбери сотрудника', initData.employees);
+      fillSelect('respReassignObject', 'Все объекты', initData.objects);
+      fillSelect('respReassignType', 'Все типы', initData.types);
+      fillSelect('respReassignCurrentEmployee', 'Все ответственные', initData.employees);
+      fillSelect('respReassignEmployee', 'Выбери нового ответственного', initData.employees);
+      fillSelect('dirDeleteObject', 'Выбери объект', initData.objects);
+      fillSelect('dirDeleteEmployee', 'Выбери сотрудника', initData.employees);
+      fillSelect('dirCategoryType', 'Выбери тип', initData.types);
+      fillSelect('dirTypeName', '', initData.types);
+      fillSelect('editType', 'Выбери тип', initData.types);
+      fillSelect('editUnit', 'Выбери ед. изм.', initData.units);
+
+      renderOperationItems();
+      renderBulkNewRows();
+      renderEditSearchResults();
+      renderCurrentResponsibilityTable();
+      renderAssignAvailableTable();
+      renderReassignAvailableTable();
+      renderMassMoveAvailable();
+      loadRequestsTab();
+    })
+    .withFailureHandler(showError)
+    .getStorekeeperDashboardInitData();
+}
+
+function showError(err) {
+  alert(err.message || err);
+}
+
+function getOperationItemsFiltered() {
+  const q = normalizeText(document.getElementById('opSearch').value);
+  return (initData.catalogItems || []).filter(function (item) {
+    if (!q) return true;
+    return normalizeText([item.article, item.name, item.type, item.category].join(' ')).indexOf(q) !== -1;
+  }).sort(function (a, b) {
+    return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
+  });
+}
+
+function renderOperationItems() {
+  const body = document.getElementById('opItemsBody');
+  const rows = getOperationItemsFiltered();
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="6" class="muted">Нет данных</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(function (item) {
+    const selected = normalizeText(selectedOperationArticle) === normalizeText(item.article);
+    return '<tr class="clickable ' + (selected ? 'selected' : '') + '" onclick="selectOperationItem(\'' + escapeHtml(item.article) + '\')">' +
+      '<td>' + escapeHtml(item.article) + '</td>' +
+      '<td>' + escapeHtml(item.name) + '</td>' +
+      '<td>' + escapeHtml(item.type) + '</td>' +
+      '<td>' + escapeHtml(item.category) + '</td>' +
+      '<td>' + escapeHtml(item.unit) + '</td>' +
+      '<td class="number">' + formatMoney(item.price) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function selectOperationItem(article) {
+  selectedOperationArticle = article;
+
+  const item = (initData.catalogItems || []).find(
+    x => normalizeText(x.article) === normalizeText(article)
+  );
+
+  document.getElementById('selectedItemMeta').textContent = item
+    ? 'Выбрано: ' + item.article + ' — ' + item.name
+    : 'Товар не выбран';
+
+  // 🔥 ВОТ ЭТО ГЛАВНОЕ — автоподстановка цены
+  if (item) {
+    const priceEl = document.getElementById('opPrice');
+    if (priceEl) {
+      priceEl.value = Number(item.price) || 0;
+    }
+  }
+
+  renderOperationItems();
+  renderSelectedItemLocations();
+}
+
+function toggleNewItemMode() {
+  const isNew = document.getElementById('newItemMode').checked;
+  document.getElementById('newItemCard').style.display = isNew ? 'block' : 'none';
+  renderSelectedItemLocations();
+}
+
+function getOperationCurrentLocations(article) {
+  return (initData.balances || [])
+    .filter(r => normalizeText(r.article) === normalizeText(article) && Number(r.qty) > 0)
+    .sort((a,b) => String(a.objectName || '').localeCompare(String(b.objectName || ''), 'ru'));
+}
+
+function renderSelectedItemLocations() {
+  const card = document.getElementById('selectedItemLocationsCard');
+  const box = document.getElementById('selectedItemLocations');
+  const isNew = document.getElementById('newItemMode').checked;
+  if (isNew || !selectedOperationArticle) {
+    card.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+  const rows = getOperationCurrentLocations(selectedOperationArticle);
+  card.style.display = 'block';
+  if (!rows.length) {
+    box.innerHTML = '<div class="muted">Сейчас остатков по объектам нет</div>';
+    return;
+  }
+  box.innerHTML = rows.map(r => '<div><strong>' + escapeHtml(r.objectName) + '</strong> — ' + formatQty(r.qty) + ' ' + escapeHtml(r.unit || '') + '</div>').join('');
+}
+
+function onOperationChange() {
+  const action = document.getElementById('opAction').value;
+  document.getElementById('destinationField').style.display = action === 'Перемещение' ? 'block' : 'none';
+  document.getElementById('priceField').style.display = action === 'Приход' ? 'block' : 'none';
+}
+
+function clearOperationForm() {
+  document.getElementById('opAction').value = 'Приход';
+  document.getElementById('opObject').value = '';
+  document.getElementById('opDestination').value = '';
+  document.getElementById('opQty').value = '';
+  document.getElementById('opPrice').value = '';
+  document.getElementById('opBasis').value = '';
+  document.getElementById('opComment').value = '';
+  document.getElementById('newItemMode').checked = false;
+  document.getElementById('newItemCard').style.display = 'none';
+  document.getElementById('newName').value = '';
+  document.getElementById('newType').value = '';
+  document.getElementById('newCategory').innerHTML = '<option value="">Выбери категорию</option>';
+  document.getElementById('newUnit').value = '';
+  selectedOperationArticle = '';
+  document.getElementById('selectedItemMeta').textContent = 'Товар не выбран';
+  renderOperationItems();
+  renderSelectedItemLocations();
+  onOperationChange();
+}
+
+function submitOperation() {
+  const mode = document.getElementById('newItemMode').checked ? 'new' : 'existing';
+  const payload = {
+    mode: mode,
+    operation: document.getElementById('opAction').value,
+    objectName: document.getElementById('opObject').value,
+    destination: document.getElementById('opDestination').value,
+    qty: Number(document.getElementById('opQty').value),
+    price: document.getElementById('opPrice').value === '' 
+      ? null 
+      : Number(document.getElementById('opPrice').value),
+    basis: document.getElementById('opBasis').value.trim(),
+    comment: document.getElementById('opComment').value.trim(),
+    article: selectedOperationArticle
+  };
+  if (mode === 'new') {
+    payload.name = document.getElementById('newName').value.trim();
+    payload.type = document.getElementById('newType').value;
+    payload.category = document.getElementById('newCategory').value;
+    payload.unit = document.getElementById('newUnit').value;
+  }
+
+  google.script.run
+    .withSuccessHandler(function (res) {
+      document.getElementById('opMessage').innerHTML = '<div class="ok">' + escapeHtml(res.message || res) + '</div>';
+      clearOperationForm();
+      refreshAllStorekeeperData();
+    })
+    .withFailureHandler(function (err) {
+      document.getElementById('opMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+    })
+    .saveStorekeeperOperation(payload);
+}
+
+function renderBulkNewRows() {
+  const body = document.getElementById('bulkNewBody');
+  let html = '';
+  for (let i = 0; i < BULK_NEW_ROWS_COUNT; i++) {
+    html += `
+      <tr>
+        <td>${i + 1}</td>
+        <td><input type="text" id="bulk-name-${i}" placeholder="Название товара"></td>
+        <td><select id="bulk-type-${i}" onchange="handleBulkTypeChange(${i})">
+            <option value="">Выбери тип</option>
+            ${(initData.types || []).map(t => '<option value="' + escapeHtml(t) + '">' + escapeHtml(t) + '</option>').join('')}
+        </select></td>
+        <td><select id="bulk-category-${i}"><option value="">Выбери категорию</option></select></td>
+        <td><select id="bulk-unit-${i}">
+          <option value="">Выбери ед. изм.</option>
+          ${(initData.units || []).map(u => '<option value="' + escapeHtml(u) + '">' + escapeHtml(u) + '</option>').join('')}
+        </select></td>
+        <td><input type="number" id="bulk-qty-${i}" min="0" step="0.001"></td>
+        <td><input type="number" id="bulk-price-${i}" min="0" step="0.01"></td>
+      </tr>`;
+  }
+  body.innerHTML = html;
+}
+function handleBulkTypeChange(idx) { fillCategoriesSelect('bulk-type-' + idx, 'bulk-category-' + idx); }
+function clearBulkNewForm() {
+  document.getElementById('bulkObject').value = '';
+  document.getElementById('bulkBasis').value = '';
+  document.getElementById('bulkNewMessage').innerHTML = '';
+  renderBulkNewRows();
+}
+function submitBulkNewItems() {
+  const rows = [];
+  for (let i = 0; i < BULK_NEW_ROWS_COUNT; i++) {
+    const name = (document.getElementById('bulk-name-' + i).value || '').trim();
+    const type = document.getElementById('bulk-type-' + i).value;
+    const category = document.getElementById('bulk-category-' + i).value;
+    const unit = document.getElementById('bulk-unit-' + i).value;
+    const qtyRaw = document.getElementById('bulk-qty-' + i).value;
+    const priceRaw = document.getElementById('bulk-price-' + i).value;
+    const hasAny = name || type || category || unit || String(qtyRaw).trim() || String(priceRaw).trim();
+    if (!hasAny) continue;
+    rows.push({ name, type, category, unit, qty: Number(qtyRaw), price: Number(priceRaw) });
+  }
+  google.script.run
+    .withSuccessHandler(function (msg) {
+      document.getElementById('bulkNewMessage').innerHTML = '<div class="ok">' + escapeHtml(msg) + '</div>';
+      clearBulkNewForm();
+      refreshAllStorekeeperData();
+    })
+    .withFailureHandler(function (err) {
+      document.getElementById('bulkNewMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+    })
+    .saveStorekeeperBulkNewItems({
+      objectName: document.getElementById('bulkObject').value,
+      commonBasis: document.getElementById('bulkBasis').value.trim(),
+      rows: rows
+    });
+}
+
+function getRespFilters(prefix) {
+  return {
+    query: document.getElementById(prefix + 'Search') ? document.getElementById(prefix + 'Search').value : '',
+    objectName: document.getElementById(prefix + 'Object') ? document.getElementById(prefix + 'Object').value : '',
+    typeName: document.getElementById(prefix + 'Type') ? document.getElementById(prefix + 'Type').value : '',
+    employee: document.getElementById(prefix + 'Employee') ? document.getElementById(prefix + 'Employee').value : ''
+  };
+}
+function getCurrentResponsibilityLookup() {
+  const respMap = {};
+  const legacyMap = {};
+
+  (initData.currentResponsibilities || []).forEach(function (x) {
+    const articleKey = normalizeText(x.article || '');
+    const objectKey = normalizeText((x.article || '') + '||' + (x.objectName || ''));
+    respMap[objectKey] = x;
+    if (!legacyMap[articleKey]) legacyMap[articleKey] = x;
+  });
+
+  return {
+    byObject: respMap,
+    byArticle: legacyMap
+  };
+}
+function getResponsibilityForRow(row, lookup) {
+  const responsibilityLookup = lookup || getCurrentResponsibilityLookup();
+  return responsibilityLookup.byObject[normalizeText((row.article || '') + '||' + (row.objectName || ''))] || null;
+}
+function getAssignedRowsFiltered(filters) {
+  const currentRows = Array.isArray(initData.currentResponsibilities) ? initData.currentResponsibilities : [];
+  let rows = [];
+
+  if (currentRows.length) {
+    rows = currentRows.map(function (r) {
+      return {
+        objectName: r.objectName || '',
+        article: r.article || '',
+        name: r.name || '',
+        type: r.type || '',
+        category: r.category || '',
+        qty: Number(r.qty) || 0,
+        unit: r.unit || '',
+        employee: r.employee || ''
+      };
+    });
+  } else {
+    const responsibilityLookup = getCurrentResponsibilityLookup();
+    rows = (initData.balances || [])
+      .filter(function (r) { return Number(r.qty) > 0; })
+      .map(function (r) {
+        const current = getResponsibilityForRow(r, responsibilityLookup);
+        return {
+          objectName: r.objectName || '',
+          article: r.article || '',
+          name: r.name || '',
+          type: r.type || '',
+          category: r.category || '',
+          qty: Number(r.qty) || 0,
+          unit: r.unit || '',
+          employee: current ? current.employee : ''
+        };
+      })
+      .filter(function (r) { return !!r.employee; });
+  }
+
+  if (filters.objectName) rows = rows.filter(r => r.objectName === filters.objectName);
+  if (filters.typeName) rows = rows.filter(r => r.type === filters.typeName);
+  if (filters.employee) rows = rows.filter(r => r.employee === filters.employee);
+
+  const q = normalizeText(filters.query || '');
+  if (q) {
+    rows = rows.filter(r => normalizeText([r.article, r.name, r.type, r.category, r.objectName, r.employee].join(' ')).indexOf(q) !== -1);
+  }
+
+  rows.sort((a,b)=> String(a.objectName).localeCompare(String(b.objectName),'ru') || String(a.name).localeCompare(String(b.name),'ru'));
+  return rows;
+}
+function getAvailableRowsFiltered(filters) {
+  const responsibilityLookup = getCurrentResponsibilityLookup();
+
+  let rows = (initData.balances || [])
+    .filter(function (r) { return Number(r.qty) > 0; })
+    .map(function (r) {
+      const current = getResponsibilityForRow(r, responsibilityLookup);
+      return {
+        objectName: r.objectName || '',
+        article: r.article || '',
+        name: r.name || '',
+        type: r.type || '',
+        category: r.category || '',
+        qty: Number(r.qty) || 0,
+        unit: r.unit || '',
+        employee: current ? current.employee : ''
+      };
+    })
+    .filter(function (r) { return !r.employee; });
+
+  if (filters.objectName) rows = rows.filter(r => r.objectName === filters.objectName);
+  if (filters.typeName) rows = rows.filter(r => r.type === filters.typeName);
+
+  const q = normalizeText(filters.query || '');
+  if (q) {
+    rows = rows.filter(r => normalizeText([r.article, r.name, r.type, r.category, r.objectName].join(' ')).indexOf(q) !== -1);
+  }
+
+  rows.sort((a,b)=> String(a.objectName).localeCompare(String(b.objectName),'ru') || String(a.name).localeCompare(String(b.name),'ru'));
+  return rows;
+}
+function renderCurrentResponsibilityTable() {
+  const body = document.getElementById('respCurrentBody');
+  const rows = getAssignedRowsFiltered(getRespFilters('respCurrent'));
+  body.innerHTML = rows.length ? rows.map(r => '<tr><td>' + escapeHtml(r.employee) + '</td><td>' + escapeHtml(r.objectName) + '</td><td>' + escapeHtml(r.article) + '</td><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.type) + '</td><td>' + escapeHtml(r.category) + '</td><td class="number">' + formatQty(r.qty) + '</td></tr>').join('') : '<tr><td colspan="7" class="muted">Нет данных</td></tr>';
+}
+function rowIdentity(row){ return normalizeText(row.objectName) + '||' + normalizeText(row.article); }
+function toggleSelected(listName, row) {
+  const list = listName === 'assign' ? respAssignSelected : (listName === 'reassign' ? respReassignSelected : massMoveSelected);
+  const key = rowIdentity(row);
+  const idx = list.findIndex(x => rowIdentity(x) === key);
+  if (idx >= 0) list.splice(idx, 1);
+  else list.push(Object.assign({}, row, { qtyToMove: row.qty }));
+}
+function renderAssignAvailableTable() {
+  const rows = getAvailableRowsFiltered(getRespFilters('respAssign'));
+  const body = document.getElementById('respAssignAvailableBody');
+  body.innerHTML = rows.length ? rows.map(r => {
+    const sel = respAssignSelected.find(x => rowIdentity(x) === rowIdentity(r));
+    return `<tr class="clickable ${sel ? 'selected' : ''}" onclick='selectAssignRow(${JSON.stringify(r).replace(/'/g, '&#39;')})'><td>${escapeHtml(r.objectName)}</td><td>${escapeHtml(r.type)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(r.name)}</td><td class="number">${formatQty(r.qty)}</td></tr>`;
+  }).join('') : '<tr><td colspan="5" class="muted">Нет данных</td></tr>';
+  renderAssignSelectedTable();
+}
+function selectAssignRow(row) { toggleSelected('assign', row); renderAssignAvailableTable(); }
+function renderAssignSelectedTable() {
+  const body = document.getElementById('respAssignSelectedBody');
+  body.innerHTML = respAssignSelected.length ? respAssignSelected.map((r, idx) => '<tr><td>' + escapeHtml(r.objectName) + '</td><td>' + escapeHtml(r.name) + '</td><td class="number">' + formatQty(r.qty) + '</td><td><button class="btn btn-secondary" onclick="removeRespAssign(' + idx + ')">Убрать</button></td></tr>').join('') : '<tr><td colspan="4" class="muted">Ничего не выбрано</td></tr>';
+}
+function removeRespAssign(idx) { respAssignSelected.splice(idx,1); renderAssignAvailableTable(); }
+function clearRespAssignSelection() { respAssignSelected = []; renderAssignAvailableTable(); document.getElementById('respAssignMessage').innerHTML=''; }
+function submitResponsibilityAssignment() {
+  google.script.run.withSuccessHandler(function(msg){
+    document.getElementById('respAssignMessage').innerHTML = '<div class="ok">' + escapeHtml(msg) + '</div>';
+    respAssignSelected = [];
+    refreshAllStorekeeperData();
+  }).withFailureHandler(function(err){
+    document.getElementById('respAssignMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+  }).saveResponsibilityAssignments({
+    employee: document.getElementById('respAssignEmployee').value,
+    rows: respAssignSelected
+  });
+}
+function getReassignFilters() {
+  return {
+    query: document.getElementById('respReassignSearch').value,
+    objectName: document.getElementById('respReassignObject').value,
+    typeName: document.getElementById('respReassignType').value,
+    employee: document.getElementById('respReassignCurrentEmployee').value
+  };
+}
+function renderReassignAvailableTable() {
+  const rows = getAssignedRowsFiltered(getReassignFilters());
+  const body = document.getElementById('respReassignAvailableBody');
+  body.innerHTML = rows.length ? rows.map(r => {
+    const sel = respReassignSelected.find(x => rowIdentity(x) === rowIdentity(r));
+    return `<tr class="clickable ${sel ? 'selected' : ''}" onclick='selectReassignRow(${JSON.stringify(r).replace(/'/g, '&#39;')})'><td>${escapeHtml(r.employee)}</td><td>${escapeHtml(r.objectName)}</td><td>${escapeHtml(r.type)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(r.name)}</td><td class="number">${formatQty(r.qty)}</td></tr>`;
+  }).join('') : '<tr><td colspan="6" class="muted">Нет данных</td></tr>';
+  renderReassignSelectedTable();
+}
+function selectReassignRow(row){ toggleSelected('reassign', row); renderReassignAvailableTable(); }
+function renderReassignSelectedTable() {
+  const body = document.getElementById('respReassignSelectedBody');
+  body.innerHTML = respReassignSelected.length ? respReassignSelected.map((r, idx) => '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.employee) + '</td><td>' + escapeHtml(r.objectName) + '</td><td class="number">' + formatQty(r.qty) + '</td><td><button class="btn btn-secondary" onclick="removeRespReassign(' + idx + ')">Убрать</button></td></tr>').join('') : '<tr><td colspan="5" class="muted">Ничего не выбрано</td></tr>';
+}
+function removeRespReassign(idx){ respReassignSelected.splice(idx,1); renderReassignAvailableTable(); }
+function clearRespReassignSelection(){ respReassignSelected=[]; renderReassignAvailableTable(); document.getElementById('respReassignMessage').innerHTML=''; }
+function submitResponsibilityReassignment() {
+  google.script.run.withSuccessHandler(function(msg){
+    document.getElementById('respReassignMessage').innerHTML = '<div class="ok">' + escapeHtml(msg) + '</div>';
+    respReassignSelected = [];
+    refreshAllStorekeeperData();
+  }).withFailureHandler(function(err){
+    document.getElementById('respReassignMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+  }).saveResponsibilityReassignments({
+    employee: document.getElementById('respReassignEmployee').value,
+    rows: respReassignSelected
+  });
+}
+
+function renderMassMoveAvailable() {
+  const body = document.getElementById('massMoveAvailableBody');
+  const filters = {
+    objectName: document.getElementById('massMoveSource').value,
+    typeName: document.getElementById('massMoveType').value,
+    employee: document.getElementById('massMoveCurrentEmployee').value,
+    query: document.getElementById('massMoveSearch').value
+  };
+
+  const responsibilityLookup = getCurrentResponsibilityLookup();
+
+  let rows = (initData.balances || [])
+    .filter(r => Number(r.qty) > 0)
+    .map(function (r) {
+      const current = getResponsibilityForRow(r, responsibilityLookup);
+      return {
+        objectName: r.objectName || '',
+        article: r.article || '',
+        name: r.name || '',
+        type: r.type || '',
+        category: r.category || '',
+        unit: r.unit || '',
+        qty: Number(r.qty) || 0,
+        employee: current ? current.employee : ''
+      };
+    });
+
+  if (filters.objectName) rows = rows.filter(r => r.objectName === filters.objectName);
+  if (filters.typeName) rows = rows.filter(r => r.type === filters.typeName);
+  if (filters.employee) rows = rows.filter(r => r.employee === filters.employee);
+
+  const q = normalizeText(filters.query || '');
+  if (q) rows = rows.filter(r => normalizeText([r.article, r.name, r.type, r.category, r.objectName, r.employee].join(' ')).indexOf(q) !== -1);
+
+  rows.sort((a,b)=> String(a.name).localeCompare(String(b.name),'ru'));
+
+  body.innerHTML = rows.length ? rows.map(r => {
+    const sel = massMoveSelected.find(x => rowIdentity(x) === rowIdentity(r));
+    return `<tr class="clickable ${sel ? 'selected' : ''}" onclick='selectMassMoveRow(${JSON.stringify(r).replace(/'/g, '&#39;')})'><td>${escapeHtml(r.objectName)}</td><td>${escapeHtml(r.type)}</td><td>${escapeHtml(r.category)}</td><td>${escapeHtml(r.name)}</td><td class="number">${formatQty(r.qty)}</td><td>${escapeHtml(r.employee || '—')}</td></tr>`;
+  }).join('') : '<tr><td colspan="6" class="muted">Нет данных</td></tr>';
+
+  renderMassMoveSelected();
+}
+function selectMassMoveRow(row){ toggleSelected('mass', row); renderMassMoveAvailable(); }
+function renderMassMoveSelected() {
+  const body = document.getElementById('massMoveSelectedBody');
+  body.innerHTML = massMoveSelected.length ? massMoveSelected.map((r, idx) => `
+    <tr>
+      <td>${escapeHtml(r.name)}</td>
+      <td class="number">${formatQty(r.qty)}</td>
+      <td><input type="number" min="0" max="${r.qty}" step="0.001" value="${r.qtyToMove || r.qty}" onchange="setMassMoveQty(${idx}, this.value)"></td>
+      <td>${escapeHtml(r.employee || '—')}</td>
+      <td><button class="btn btn-secondary" onclick="removeMassMoveRow(${idx})">Убрать</button></td>
+    </tr>`).join('') : '<tr><td colspan="5" class="muted">Ничего не выбрано</td></tr>';
+}
+function setMassMoveQty(idx, value){ massMoveSelected[idx].qtyToMove = Number(value); }
+function removeMassMoveRow(idx){ massMoveSelected.splice(idx,1); renderMassMoveAvailable(); }
+function clearMassMoveSelection(){ massMoveSelected=[]; renderMassMoveAvailable(); document.getElementById('massMoveMessage').innerHTML=''; }
+function getMassMoveObjectLetter(objectName) {
+  const value = String(objectName || '').trim();
+  if (!value) return 'О';
+
+  const knownObjects = Array.isArray(initData.objects) ? initData.objects : [];
+  const isKnown = knownObjects.some(function (x) { return normalizeText(x) === normalizeText(value); });
+  if (!isKnown) return 'О';
+
+  const norm = normalizeText(value);
+  if (norm.indexOf('основ') !== -1 && norm.indexOf('склад') !== -1) return 'О';
+
+  return 'С';
+}
+function buildMassMoveReport(rows, sourceObject, destinationObject) {
+  const model = {
+    hashtag: '#Перемещение' + getMassMoveObjectLetter(sourceObject) + getMassMoveObjectLetter(destinationObject),
+    groups: []
+  };
+
+  const grouped = {};
+  (rows || []).forEach(function (row) {
+    const type = String(row.type || 'Без типа').trim() || 'Без типа';
+    if (!grouped[type]) grouped[type] = [];
+    grouped[type].push({
+      category: String(row.category || 'Без категории').trim() || 'Без категории',
+      name: String(row.name || '').trim(),
+      qty: Number(row.qty) || 0,
+      unit: String(row.unit || '').trim()
+    });
+  });
+
+  const typeNames = Object.keys(grouped).sort(function (a, b) { return a.localeCompare(b, 'ru'); });
+  typeNames.forEach(function (typeName) {
+    const items = grouped[typeName]
+      .sort(function (a, b) {
+        return a.category.localeCompare(b.category, 'ru') || a.name.localeCompare(b.name, 'ru');
+      })
+      .map(function (item) {
+        return {
+          category: item.category,
+          name: item.name,
+          qty: formatQty(item.qty),
+          unit: item.unit
+        };
+      });
+
+    model.groups.push({ type: typeName, items: items });
+  });
+
+  return model;
+}
+function renderTransferReportBlocks(model) {
+  const groupsHtml = (model.groups || []).map(function (group) {
+    const byCategory = {};
+    (group.items || []).forEach(function (item) {
+      const categoryName = String(item.category || 'Без категории').trim() || 'Без категории';
+      if (!byCategory[categoryName]) byCategory[categoryName] = [];
+      byCategory[categoryName].push(item);
+    });
+
+    const categoryHtml = Object.keys(byCategory).sort(function (a, b) {
+      return a.localeCompare(b, 'ru');
+    }).map(function (categoryName) {
+      const rowsHtml = byCategory[categoryName].map(function (item) {
+        return '<div style="display:grid; grid-template-columns: 1fr 82px; gap:6px; margin-top:3px; padding:2px 0; border-bottom:1px solid #e5eaf2;">' +
+          '<div style="padding:1px 0; font-size:24px; line-height:1.2;">' + escapeHtml(item.name) + '</div>' +
+          '<div style="padding:1px 0; text-align:right; white-space:nowrap; font-size:24px; line-height:1.2; font-weight:600;">' + escapeHtml(item.qty + (item.unit ? ' ' + item.unit : '')) + '</div>' +
+        '</div>';
+      }).join('');
+
+      return '<div style="margin-top:8px; margin-left:14px;">' +
+        '<div style="font-weight:700; margin-bottom:3px; font-size:16px; line-height:1.2; color:#2f3640;">' + escapeHtml(categoryName) + '</div>' +
+        rowsHtml +
+      '</div>';
+    }).join('');
+
+    return '<div style="margin-top:10px;">' +
+      '<div style="font-weight:700; margin-bottom:4px; font-size:16px; line-height:1.2; color:#2f3640;">' + escapeHtml(group.type) + '</div>' +
+      categoryHtml +
+    '</div>';
+  }).join('');
+
+  return '<div style="margin-top:8px; border:1px solid #d8e0ef; border-radius:10px; padding:10px; background:#fff; max-width:760px;">' +
+    groupsHtml +
+  '</div>';
+}
+function openTransferReportPanel(model) {
+  const reportWindow = window.open('', '_blank', 'width=860,height=900');
+  if (!reportWindow) return false;
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Отчет перемещения</title></head>' +
+    '<body style="margin:0; background:#fff; font-family:Arial,sans-serif; padding:12px;">' +
+    '<div style="font-size:20px; font-weight:700;">Что переместили</div>' +
+    renderTransferReportBlocks(model) +
+    '</body></html>';
+
+  reportWindow.document.open();
+  reportWindow.document.write(html);
+  reportWindow.document.close();
+  reportWindow.focus();
+  return true;
+}
+function submitMassMove() {
+  const sourceObject = document.getElementById('massMoveSource').value;
+  const destinationObject = document.getElementById('massMoveDestination').value;
+  const rowsForTransfer = massMoveSelected.map(r => ({
+    article: r.article,
+    qty: Number(r.qtyToMove || r.qty),
+    objectName: r.objectName,
+    name: r.name,
+    type: r.type,
+    category: r.category,
+    unit: r.unit
+  }));
+
+  google.script.run.withSuccessHandler(function(msg){
+    const report = buildMassMoveReport(rowsForTransfer, sourceObject, destinationObject);
+    const opened = openTransferReportPanel(report);
+    document.getElementById('massMoveMessage').innerHTML =
+      '<div class="ok">' + escapeHtml(msg) + '</div>' +
+      '<div style="margin-top:8px;">' + (opened ? 'Открыт отчет в новой панели.' : 'Не удалось открыть новую панель (всплывающее окно заблокировано).') + '</div>' +
+      renderTransferReportBlocks(report);
+
+    massMoveSelected = [];
+    refreshAllStorekeeperData();
+  }).withFailureHandler(function(err){
+    document.getElementById('massMoveMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+  }).saveStorekeeperMassTransfer({
+    sourceObject: sourceObject,
+    destinationObject: destinationObject,
+    basis: document.getElementById('massMoveBasis').value.trim(),
+    newEmployee: document.getElementById('massMoveEmployee').value,
+    rows: rowsForTransfer
+  });
+}
+
+function renderEditItems() {
+  renderEditSearchResults();
+}
+function fillEditCard() {
+  const article = document.getElementById('editArticle').value;
+  if (article) selectEditItem(article);
+}
+function renderEditSearchResults() {
+  const body = document.getElementById('editSearchBody');
+  const input = document.getElementById('editSearch');
+  const query = normalizeText(input ? input.value : '');
+
+  let rows = (initData.catalogItems || []).slice();
+  if (query) {
+    rows = rows.filter(function (item) {
+      const text = normalizeText([item.article, item.name, item.type, item.category, item.comment].join(' '));
+      return text.indexOf(query) !== -1;
+    });
+  }
+
+  rows.sort(function (a, b) {
+    return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
+  });
+
+  rows = rows.slice(0, 100);
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="4" class="muted">Ничего не найдено</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(function (item) {
+    const selected = String(item.article) === String(selectedEditArticle) ? 'selected-row' : '';
+    return '' +
+      '<tr class="' + selected + '" onclick="selectEditItem(\'' + escapeJs(item.article) + '\')">' +
+        '<td>' + escapeHtml(item.article) + '</td>' +
+        '<td>' + escapeHtml(item.name) + '</td>' +
+        '<td>' + escapeHtml(item.type) + '</td>' +
+        '<td>' + escapeHtml(item.category) + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+function selectEditItem(article) {
+  selectedEditArticle = article;
+  const item = findCatalogByArticle(article);
+  if (!item) return;
+
+  document.getElementById('editArticle').value = item.article;
+  document.getElementById('editName').value = item.name;
+  document.getElementById('editType').value = item.type;
+  fillCategoriesSelect('editType', 'editCategory', item.category || '');
+  document.getElementById('editCategory').value = item.category;
+  document.getElementById('editUnit').value = item.unit;
+  document.getElementById('editPrice').value = item.price;
+  document.getElementById('editActive').value = item.active || 'Да';
+  document.getElementById('editComment').value = item.comment || '';
+
+  document.getElementById('editSelectedMeta').textContent =
+    'Выбран: ' + item.article + ' / ' + item.name;
+
+  renderEditSearchResults();
+  loadItemCard(article);
+}
+
+function loadItemCard(article) {
+  google.script.run
+    .withSuccessHandler(function (data) {
+      currentItemCardData = data || null;
+      renderItemCardSections();
+    })
+    .withFailureHandler(function (err) {
+      document.getElementById('editMessage').innerHTML =
+        '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+    })
+    .getItemCardData(article);
+}
+
+function reloadCurrentItemCard() {
+  const article = document.getElementById('editArticle').value.trim();
+  if (!article) {
+    alert('Сначала выбери товар.');
+    return;
+  }
+  loadItemCard(article);
+}
+
+
+function renderItemCardSections() {
+  renderItemCardBalances();
+  renderItemCardMovements();
+  renderItemCardAssigned();
+}
+
+function renderItemCardBalances() {
+  const body = document.getElementById('itemCardBalancesBody');
+  if (!body) return;
+
+  const rows = (currentItemCardData && currentItemCardData.balances) ? currentItemCardData.balances : [];
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="4" class="muted">Остатков нет</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(function (r) {
+    return '<tr>' +
+      '<td>' + escapeHtml(r.objectName) + '</td>' +
+      '<td class="num">' + formatQty(r.qty) + '</td>' +
+      '<td class="num">' + formatMoney(r.price) + '</td>' +
+      '<td class="num">' + formatMoney(r.sum) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderItemCardMovements() {
+  const body = document.getElementById('itemCardMovementsBody');
+  if (!body) return;
+
+  const rows = (currentItemCardData && currentItemCardData.movements) ? currentItemCardData.movements : [];
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="9" class="muted">Движений нет</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(function (r) {
+    return '<tr>' +
+      '<td>' + escapeHtml(r.date) + '</td>' +
+      '<td>' + escapeHtml(r.operation) + '</td>' +
+      '<td class="num">' + formatQty(r.qty) + '</td>' +
+      '<td class="num">' + formatMoney(r.price) + '</td>' +
+      '<td>' + escapeHtml(r.fromObj) + '</td>' +
+      '<td>' + escapeHtml(r.toObj) + '</td>' +
+      '<td>' + escapeHtml(r.basis) + '</td>' +
+      '<td>' + escapeHtml(r.employee) + '</td>' +
+      '<td>' + escapeHtml(r.comment) + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function renderItemCardAssigned() {
+  const body = document.getElementById('itemCardAssignedBody');
+  if (!body) return;
+
+  const rows = (currentItemCardData && currentItemCardData.assigned) ? currentItemCardData.assigned : [];
+
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="4" class="muted">Ответственный не назначен</td></tr>';
+    return;
+  }
+
+  body.innerHTML = rows.map(function (r) {
+    return '<tr>' +
+      '<td>' + escapeHtml(r.employee) + '</td>' +
+      '<td>' + escapeHtml(r.objectName) + '</td>' +
+      '<td class="num">' + formatQty(r.qty) + '</td>' +
+      '<td>' + escapeHtml(r.lastIssueDate || '') + '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+
+function saveEditCard() {
+  google.script.run.withSuccessHandler(function(msg){
+    document.getElementById('editMessage').innerHTML = '<div class="ok">' + escapeHtml(msg) + '</div>';
+    refreshAllStorekeeperData();
+  }).withFailureHandler(function(err){
+    document.getElementById('editMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+  }).updateCatalogItem({
+    article: document.getElementById('editArticle').value,
+    name: document.getElementById('editName').value.trim(),
+    type: document.getElementById('editType').value,
+    category: document.getElementById('editCategory').value,
+    unit: document.getElementById('editUnit').value,
+    price: Number(document.getElementById('editPrice').value),
+    active: document.getElementById('editActive').value,
+    comment: document.getElementById('editComment').value.trim()
+  });
+}
+
+function saveDirectoryItem(kind) {
+  const payload = { kind: kind };
+  if (kind === 'object') payload.objectName = document.getElementById('dirObjectName').value.trim();
+  if (kind === 'employee') payload.employeeName = document.getElementById('dirEmployeeName').value.trim();
+  if (kind === 'type') payload.typeName = document.getElementById('dirTypeName').value.trim();
+  if (kind === 'category') { payload.typeName = document.getElementById('dirCategoryType').value; payload.categoryName = document.getElementById('dirCategoryName').value.trim(); }
+  if (kind === 'unit') payload.unitName = document.getElementById('dirUnitName').value.trim();
+  google.script.run.withSuccessHandler(function(msg){
+    document.getElementById('directoryMessage').innerHTML = '<div class="ok">' + escapeHtml(msg) + '</div>';
+    ['dirObjectName','dirEmployeeName','dirTypeName','dirCategoryName','dirUnitName'].forEach(id => { const el = document.getElementById(id); if (el) el.value=''; });
+    refreshAllStorekeeperData();
+  }).withFailureHandler(function(err){
+    document.getElementById('directoryMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+  }).saveStorekeeperDirectoryItem(payload);
+}
+function deleteDirectoryItem(kind) {
+  const payload = { kind: kind };
+  if (kind === 'object') payload.value = document.getElementById('dirDeleteObject').value;
+  if (kind === 'employee') payload.value = document.getElementById('dirDeleteEmployee').value;
+  google.script.run.withSuccessHandler(function(msg){
+    document.getElementById('directoryMessage').innerHTML = '<div class="ok">' + escapeHtml(msg) + '</div>';
+    refreshAllStorekeeperData();
+  }).withFailureHandler(function(err){
+    document.getElementById('directoryMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+  }).deleteStorekeeperDirectoryItem(payload);
+}
+
+function loadRequestsTab() {
+  google.script.run.withSuccessHandler(function (data) {
+    requestsData = data || { rows: [], types: [], categoriesByType: {} };
+    renderRequestsTable();
+  }).withFailureHandler(function (err) {
+    document.getElementById('requestsMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+  }).getPendingNewItemRequests();
+}
+function renderRequestsTable() {
+  const body = document.getElementById('requestsBody');
+  const rows = requestsData.rows || [];
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="13" class="muted">Нет активных запросов</td></tr>';
+    return;
+  }
+  body.innerHTML = rows.map(function (row, idx) {
+    const categories = requestsData.categoriesByType[row.type] || [];
+    return '<tr>' +
+      '<td><input type="checkbox" ' + (row._selected ? 'checked' : '') + ' onchange="toggleRequestSelection(' + idx + ', this.checked)"></td>' +
+      '<td>' + escapeHtml(row.requestDate) + '</td>' +
+      '<td>' + escapeHtml(row.requesterEmail) + '</td>' +
+      '<td>' + escapeHtml(row.objectName) + '</td>' +
+      '<td>' + escapeHtml(row.commonBasis) + '</td>' +
+      '<td>' + escapeHtml(row.name) + '</td>' +
+      '<td>' + escapeHtml(row.unit) + '</td>' +
+      '<td class="number">' + formatQty(row.qty) + '</td>' +
+      '<td class="number">' + formatMoney(row.price) + '</td>' +
+      '<td><select id="req-type-' + idx + '" onchange="onRequestTypeChange(' + idx + ', this.value)"><option value="">Выбери</option>' +
+        (requestsData.types || []).map(function (t) { return '<option value="' + escapeHtml(t) + '" ' + (t === row.type ? 'selected' : '') + '>' + escapeHtml(t) + '</option>'; }).join('') + '</select></td>' +
+      '<td><select id="req-category-' + idx + '" onchange="onRequestCategoryChange(' + idx + ', this.value)"><option value="">Выбери</option>' +
+        categories.map(function (c) { return '<option value="' + escapeHtml(c) + '" ' + (c === row.category ? 'selected' : '') + '>' + escapeHtml(c) + '</option>'; }).join('') + '</select></td>' +
+      '<td><input id="req-finalName-' + idx + '" type="text" value="' + escapeHtml(row.finalName || row.name) + '" oninput="onRequestFinalNameChange(' + idx + ', this.value)"></td>' +
+      '<td><input id="req-comment-' + idx + '" type="text" value="' + escapeHtml(row.storekeeperComment || '') + '" oninput="onRequestCommentChange(' + idx + ', this.value)"></td>' +
+    '</tr>';
+  }).join('');
+}
+function onRequestTypeChange(idx, value) {
+  const row = (requestsData.rows || [])[idx];
+  if (!row) return;
+  row.type = value || '';
+  const categories = requestsData.categoriesByType[row.type] || [];
+  if (categories.indexOf(row.category) === -1) row.category = '';
+  renderRequestsTable();
+}
+function onRequestCategoryChange(idx, value) {
+  const row = (requestsData.rows || [])[idx];
+  if (!row) return;
+  row.category = value || '';
+}
+function onRequestFinalNameChange(idx, value) {
+  const row = (requestsData.rows || [])[idx];
+  if (!row) return;
+  row.finalName = String(value || '');
+}
+function onRequestCommentChange(idx, value) {
+  const row = (requestsData.rows || [])[idx];
+  if (!row) return;
+  row.storekeeperComment = String(value || '');
+}
+function toggleAllRequests(checked) { (requestsData.rows || []).forEach(r => r._selected = !!checked); renderRequestsTable(); }
+function toggleRequestSelection(idx, checked) { requestsData.rows[idx]._selected = !!checked; }
+function getSelectedRequestsPayloadRows() {
+  return (requestsData.rows || []).filter(r => r._selected).map(function (row) {
+    return {
+      sheetRow: row.sheetRow, requestId: row.requestId, objectName: row.objectName, commonBasis: row.commonBasis, name: row.name,
+      unit: row.unit, qty: row.qty, price: row.price,
+      type: String(row.type || '').trim(),
+      category: String(row.category || '').trim(),
+      finalName: String(row.finalName || row.name || '').trim(),
+      storekeeperComment: String(row.storekeeperComment || '').trim()
+    };
+  });
+}
+function approveSelectedRequests() {
+  const payloadRows = getSelectedRequestsPayloadRows();
+  if (!payloadRows.length) { alert('Выбери хотя бы одну строку для подтверждения.'); return; }
+  google.script.run.withSuccessHandler(function (msg) {
+    document.getElementById('requestsMessage').innerHTML = '<div class="ok">' + escapeHtml(msg) + '</div>';
+    refreshAllStorekeeperData();
+  }).withFailureHandler(function (err) {
+    document.getElementById('requestsMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+  }).approveNewItemRequests({ rows: payloadRows });
+}
+function deleteSelectedRequests() {
+  const selectedRows = (requestsData.rows || []).filter(r => r._selected);
+  if (!selectedRows.length) { alert('Выбери хотя бы одну строку для удаления.'); return; }
+  google.script.run.withSuccessHandler(function (msg) {
+    document.getElementById('requestsMessage').innerHTML = '<div class="ok">' + escapeHtml(msg) + '</div>';
+    refreshAllStorekeeperData();
+  }).withFailureHandler(function (err) {
+    document.getElementById('requestsMessage').innerHTML = '<div class="danger">' + escapeHtml(err.message || err) + '</div>';
+  }).deleteNewItemRequests({ rows: selectedRows.map(r => ({ sheetRow: r.sheetRow })) });
+}
+
+refreshAllStorekeeperData();
+onOperationChange();
+</script>
+</body>
+</html>

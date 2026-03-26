@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f5f7fb;
+      color: #222;
+    }
+
+    .wrap {
+      padding: 22px 24px;
+    }
+
+    .title {
+      font-size: 30px;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+      background: #fff;
+      padding: 16px;
+      border-radius: 14px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .toolbar label {
+      font-weight: 600;
+    }
+
+    input[type="text"], select {
+      border: 1px solid #cfd6e4;
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 14px;
+      background: #fff;
+      box-sizing: border-box;
+    }
+
+    .search-input {
+      width: 320px;
+    }
+
+    .object-filter {
+      width: 260px;
+    }
+
+    .meta {
+      margin-left: auto;
+      font-size: 13px;
+      color: #5f6b7a;
+    }
+
+    .table-wrap {
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    }
+
+    .scroll {
+      max-height: 620px;
+      overflow: auto;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px;
+    }
+
+    thead th {
+      background: #eef3fb;
+      padding: 12px 10px;
+      border-bottom: 1px solid #d8e0ef;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    tbody td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #edf1f7;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover {
+      background: #f8fbff;
+    }
+
+    .loading {
+      padding: 40px;
+      text-align: center;
+      font-size: 16px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 22px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-secondary {
+      background: #e9edf5;
+      color: #222;
+    }
+
+    .empty {
+      padding: 24px;
+      color: #6b7280;
+    }
+
+    .number {
+      text-align: right;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">Поиск товара</div>
+
+    <div class="toolbar">
+      <label for="searchInput">Поиск:</label>
+      <input id="searchInput" class="search-input" type="text" placeholder="Артикул, название, тип, категория">
+
+      <label for="objectFilter">Объект:</label>
+      <select id="objectFilter" class="object-filter">
+        <option value="">Все объекты</option>
+      </select>
+
+      <div class="meta" id="metaInfo">Загрузка...</div>
+    </div>
+
+    <div class="table-wrap">
+      <div id="loading" class="loading">Загрузка данных...</div>
+
+      <div id="tableBlock" class="scroll hidden">
+        <table>
+          <thead>
+            <tr>
+              <th>Артикул</th>
+              <th>Наименование</th>
+              <th>Объект</th>
+              <th>Тип</th>
+              <th>Категория</th>
+              <th>Ед. изм.</th>
+              <th class="number">Количество</th>
+              <th class="number">Цена</th>
+              <th class="number">Сумма</th>
+            </tr>
+          </thead>
+          <tbody id="resultBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer">
+      <button class="btn btn-secondary" onclick="google.script.host.close()">Закрыть</button>
+    </div>
+  </div>
+
+  <script>
+    let allItems = [];
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function init() {
+      google.script.run
+        .withSuccessHandler(renderInit)
+        .withFailureHandler(showError)
+        .getSearchFormData();
+    }
+
+    function renderInit(data) {
+      allItems = data || [];
+
+      const objects = [...new Set(allItems.map(x => x.objectName).filter(Boolean))]
+        .sort((a, b) => String(a).localeCompare(String(b), 'ru'));
+
+      const objectFilter = document.getElementById('objectFilter');
+      objectFilter.innerHTML =
+        '<option value="">Все объекты</option>' +
+        objects.map(o => `<option value="${escapeHtml(o)}">${escapeHtml(o)}</option>`).join('');
+
+      document.getElementById('searchInput').addEventListener('input', renderRows);
+      objectFilter.addEventListener('change', renderRows);
+
+      document.getElementById('loading').classList.add('hidden');
+      document.getElementById('tableBlock').classList.remove('hidden');
+
+      renderRows();
+    }
+
+    function renderRows() {
+      const query = document.getElementById('searchInput').value.trim().toLowerCase();
+      const objectName = document.getElementById('objectFilter').value;
+      const body = document.getElementById('resultBody');
+
+      let rows = allItems.filter(item => Number(item.qty) !== 0);
+
+      if (objectName) {
+        rows = rows.filter(item => item.objectName === objectName);
+      }
+
+      if (query) {
+        rows = rows.filter(item => {
+          const text = [
+            item.article,
+            item.name,
+            item.objectName,
+            item.type,
+            item.category
+          ].join(' ').toLowerCase();
+
+          return text.includes(query);
+        });
+      }
+
+      rows.sort((a, b) => {
+        if (String(a.name) === String(b.name)) {
+          return String(a.objectName).localeCompare(String(b.objectName), 'ru');
+        }
+        return String(a.name).localeCompare(String(b.name), 'ru');
+      });
+
+      document.getElementById('metaInfo').textContent = `Найдено позиций: ${rows.length}`;
+
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="9" class="empty">Ничего не найдено</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = rows.map(item => `
+        <tr>
+          <td>${escapeHtml(item.article)}</td>
+          <td>${escapeHtml(item.name)}</td>
+          <td>${escapeHtml(item.objectName)}</td>
+          <td>${escapeHtml(item.type)}</td>
+          <td>${escapeHtml(item.category)}</td>
+          <td>${escapeHtml(item.unit)}</td>
+          <td class="number">${item.qty}</td>
+          <td class="number">${formatMoney(item.price)}</td>
+          <td class="number">${formatMoney(item.sum)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function formatMoney(value) {
+      const num = Number(value) || 0;
+      return num.toLocaleString('ru-RU', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    function showError(err) {
+      document.getElementById('loading').textContent =
+        'Ошибка загрузки: ' + (err.message || err);
+    }
+
+    init();
+  </script>
+</body>
+</html>
