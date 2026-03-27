@@ -3173,7 +3173,7 @@ function ensureFleetTripsSheets_() {
   const specs = [
     {
       name: 'Автопарк',
-      headers: ['ID', 'Автомобиль', 'Госномер', 'Водитель', 'Пробег', 'Ближайшее ТО', 'Комментарий', 'Создано', 'Кем']
+      headers: ['ID', 'Автомобиль', 'Госномер', 'Водитель', 'Пробег', 'Ближайшее ТО', 'Комментарий', 'Создано', 'Кем', 'Тип авто']
     },
     {
       name: 'ТО и ремонты',
@@ -3196,6 +3196,8 @@ function ensureFleetTripsSheets_() {
       formatHeader_(sh, 1, 1, 1, lastCol);
       sh.setFrozenRows(1);
       autoResize_(sh, 1, lastCol);
+    } else if (spec.name === 'Автопарк' && String(header[9] || '').trim() !== 'Тип авто') {
+      sh.getRange(1, 10).setValue('Тип авто');
     }
   });
 }
@@ -3217,7 +3219,7 @@ function getFleetTripsInitData() {
   const tripSh = ss.getSheetByName('Поездки автопарк');
   const dir = ss.getSheetByName('Справочник');
 
-  const fleetRows = fleetSh.getLastRow() >= 2 ? fleetSh.getRange(2, 1, fleetSh.getLastRow() - 1, 9).getValues() : [];
+  const fleetRows = fleetSh.getLastRow() >= 2 ? fleetSh.getRange(2, 1, fleetSh.getLastRow() - 1, 10).getValues() : [];
   const serviceRows = serviceSh.getLastRow() >= 2 ? serviceSh.getRange(2, 1, serviceSh.getLastRow() - 1, 11).getValues() : [];
   const tripRows = tripSh.getLastRow() >= 2 ? tripSh.getRange(2, 1, tripSh.getLastRow() - 1, 13).getValues() : [];
 
@@ -3278,6 +3280,7 @@ function getFleetTripsInitData() {
       mileage: mileage,
       nextMaintenance: nextTO,
       comment: String(r[6] || '').trim(),
+      isPersonal: String(r[9] || '').trim() === 'personal',
       lastServiceDate: lastService ? lastService.date : '',
       totalMaintenanceCost: totalAmount,
       worksDone: lastService ? lastService.works : '',
@@ -3318,6 +3321,7 @@ function saveFleetVehicle(payload) {
   const mileage = Number(payload && payload.mileage);
   const nextTO = Number(payload && payload.nextMaintenance);
   const comment = String(payload && payload.comment || '').trim();
+  const ownershipType = String(payload && payload.ownershipType || 'company').trim() === 'personal' ? 'personal' : 'company';
 
   if (!car) throw new Error('Укажи название автомобиля.');
   if (!plate) throw new Error('Укажи госномер.');
@@ -3329,7 +3333,7 @@ function saveFleetVehicle(payload) {
   const user = getCurrentUserEmail_();
   const id = 'CAR-' + Utilities.getUuid().slice(0, 8).toUpperCase();
 
-  sh.appendRow([id, car, plate, driver, mileage, isFinite(nextTO) ? nextTO : '', comment, now, user]);
+  sh.appendRow([id, car, plate, driver, mileage, isFinite(nextTO) ? nextTO : '', comment, now, user, ownershipType]);
   return 'Автомобиль добавлен: ' + car;
 }
 
@@ -3383,32 +3387,42 @@ function saveFleetTrip(payload) {
   const date = payload && payload.date ? new Date(payload.date) : new Date();
   const car = String(payload && payload.car || '').trim();
   const employee = String(payload && payload.employee || '').trim();
-  const tripType = String(payload && payload.tripType || '').trim();
-  const objectName = String(payload && payload.objectName || '').trim();
   const route = String(payload && payload.route || '').trim();
   const purpose = String(payload && payload.purpose || '').trim();
   const mileage = Number(payload && payload.mileage);
-  const cost = Number(payload && payload.cost);
-  const comment = String(payload && payload.comment || '').trim();
+  const cost = mileage * 1.5;
 
   if (!car) throw new Error('Выбери автомобиль.');
   if (!employee) throw new Error('Укажи сотрудника.');
-  if (!tripType) throw new Error('Укажи тип поездки.');
-  if (!objectName && !route) throw new Error('Заполни объект или маршрут.');
+  if (!route) throw new Error('Укажи маршрут.');
   if (!isFinite(mileage) || mileage <= 0) throw new Error('Километраж должен быть больше 0.');
-  if (!isFinite(cost) || cost < 0) throw new Error('Расходы должны быть числом 0 или больше.');
+  if (!isFinite(cost) || cost < 0) throw new Error('Не удалось рассчитать сумму поездки.');
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName('Поездки автопарк');
   const fleet = ss.getSheetByName('Автопарк');
   const now = new Date();
   const user = getCurrentUserEmail_();
+  let personalCarValidated = false;
+  if (fleet.getLastRow() >= 2) {
+    const fleetData = fleet.getRange(2, 1, fleet.getLastRow() - 1, 10).getValues();
+    for (var i = 0; i < fleetData.length; i++) {
+      if (String(fleetData[i][1] || '').trim() !== car) continue;
+      if (String(fleetData[i][9] || '').trim() !== 'personal') {
+        throw new Error('Поездки можно добавлять только для личных автомобилей.');
+      }
+      personalCarValidated = true;
+      break;
+    }
+  }
+  if (!personalCarValidated) throw new Error('Автомобиль не найден в реестре личных автомобилей.');
+
   const id = 'TRP-' + Utilities.getUuid().slice(0, 8).toUpperCase();
 
-  sh.appendRow([id, date, car, employee, tripType, objectName, route, purpose, mileage, cost, comment, now, user]);
+  sh.appendRow([id, date, car, employee, 'Личный автомобиль', '', route, purpose, mileage, cost, '', now, user]);
 
   if (fleet.getLastRow() >= 2) {
-    const fleetData = fleet.getRange(2, 1, fleet.getLastRow() - 1, 9).getValues();
+    const fleetData = fleet.getRange(2, 1, fleet.getLastRow() - 1, 10).getValues();
     for (var i = 0; i < fleetData.length; i++) {
       if (String(fleetData[i][1] || '').trim() !== car) continue;
       const currentMileage = Number(fleetData[i][4]) || 0;
