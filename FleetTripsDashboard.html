@@ -42,11 +42,8 @@
       cursor: pointer;
     }
     .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-    .cards { margin-top: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-    .tile { padding: 14px; }
-    .tile .k { color: var(--muted); font-size: 12px; }
-    .tile .v { font-size: 34px; font-weight: 700; margin-top: 6px; }
-    .tabs { display: flex; gap: 10px; margin: 14px 0; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 14px 0; }
+    .tabs { display: flex; gap: 10px; }
     .tab {
       border: 1px solid #bdd3ff;
       border-radius: 999px;
@@ -109,27 +106,23 @@
         <h1>Автопарк и поездки</h1>
         <p class="desc">Единая панель управления автомобилями, обслуживанием и выездами на объекты.</p>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button class="btn" onclick="openModal('car')">Добавить автомобиль</button>
-        <button class="btn" onclick="openModal('service')">Добавить ТО / ремонт</button>
-        <button class="btn primary" onclick="openModal('trip')">Добавить поездку</button>
-      </div>
-    </div>
-    <div class="cards">
-      <div class="tile"><div class="k">Автомобилей в учете</div><div id="kCars" class="v">0</div></div>
-      <div class="tile"><div class="k">Расходы на обслуживание</div><div id="kServ" class="v">₽ 0</div></div>
-      <div class="tile"><div class="k">Количество поездок</div><div id="kTrips" class="v">0</div></div>
-      <div class="tile"><div class="k">Общий пробег</div><div id="kMileage" class="v">0 км</div></div>
     </div>
   </div>
 
-  <div class="tabs">
-    <button class="tab active" data-tab="maintenance">Обслуживание</button>
-    <button class="tab" data-tab="trips">Поездки</button>
-    <button class="tab" data-tab="history">История работ</button>
+  <div class="toolbar">
+    <div class="tabs">
+      <button class="tab active" data-tab="trips">Поездки</button>
+      <button class="tab" data-tab="maintenance">Обслуживание</button>
+      <button class="tab" data-tab="history">История работ</button>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" onclick="openModal('car')">Добавить автомобиль</button>
+      <button class="btn primary" onclick="openModal('service')">Добавить ТО / ремонт</button>
+      <button class="btn primary" onclick="openModal('trip')">Добавить поездку</button>
+    </div>
   </div>
 
-  <div id="maintenance" class="panel">
+  <div id="maintenance" class="panel hidden">
     <div class="section-head">
       <div><h2 class="section-title">Реестр обслуживания</h2><p class="section-sub">Контроль состояния автомобилей, расходов и плановых ТО.</p></div>
       <div class="filters">
@@ -151,20 +144,20 @@
     </div>
   </div>
 
-  <div id="trips" class="panel hidden">
+  <div id="trips" class="panel">
     <div class="section-head">
-      <div><h2 class="section-title">Журнал поездок</h2><p class="section-sub">Поездки на объекты, маршруты, километраж и расходы.</p></div>
-      <div class="filters"><input id="tripSearch" class="f" placeholder="Объект / сотрудник / авто" oninput="renderTrips()"></div>
+      <div><h2 class="section-title">Журнал поездок</h2><p class="section-sub">Поездки для личных автомобилей сотрудников. Сумма рассчитывается автоматически: км × 1.5.</p></div>
+      <div class="filters"><input id="tripSearch" class="f" placeholder="Маршрут / сотрудник / авто" oninput="renderTrips()"></div>
     </div>
     <div style="overflow:auto;">
       <table>
-        <thead><tr><th>Дата</th><th>Объект</th><th>Маршрут</th><th>Автомобиль / водитель</th><th>Цель поездки</th><th>Км</th><th>Расходы</th><th>Комментарий</th></tr></thead>
+        <thead><tr><th>Дата</th><th>Маршрут</th><th>Автомобиль / сотрудник</th><th>Цель поездки</th><th>Км</th><th>Сумма</th></tr></thead>
         <tbody id="tripRows"></tbody>
       </table>
     </div>
     <div class="grid-2">
-      <div class="card"><h3>Частые направления</h3><div id="frequentDestinations"></div></div>
-      <div class="card"><h3>Сводка по поездкам</h3><div id="tripStats"></div></div>
+      <div class="card"><h3>Накопления сотрудников</h3><div id="employeeAccumulations"></div></div>
+      <div class="card"><h3>Условия начисления</h3><div id="tripRules"></div></div>
     </div>
   </div>
 
@@ -188,7 +181,7 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const state = { cars: [], trips: [], history: [], services: [], employees: [], objects: [], tab: 'maintenance', modal: null };
+    const state = { cars: [], trips: [], history: [], services: [], employees: [], objects: [], tab: 'trips', modal: null };
 
     const fmtNum = n => (Number(n) || 0).toLocaleString('ru-RU');
     const fmtMoney = n => '₽ ' + fmtNum(n);
@@ -217,13 +210,6 @@
 
     function parseWorks(v) {
       return String(v || '').split(/[,;\n]/).map(x => x.trim()).filter(Boolean);
-    }
-
-    function renderKpis() {
-      document.getElementById('kCars').textContent = state.cars.length;
-      document.getElementById('kServ').textContent = fmtMoney(state.history.reduce((s, x) => s + (x.amount || 0), 0));
-      document.getElementById('kTrips').textContent = state.trips.length;
-      document.getElementById('kMileage').textContent = fmtNum(state.trips.reduce((s, x) => s + (x.mileage || 0), 0)) + ' км';
     }
 
     function renderMaintenance() {
@@ -272,25 +258,29 @@
       document.getElementById('tripRows').innerHTML = rows.map(r => `
         <tr>
           <td>${escapeHtml(r.date || '—')}</td>
-          <td><b>${escapeHtml(r.objectName || '—')}</b></td>
           <td>${escapeHtml(r.route || '—')}</td>
           <td><b>${escapeHtml(r.car)}</b><div class="small">${escapeHtml(r.employee || '')}</div></td>
           <td>${escapeHtml(r.purpose || '—')}</td>
           <td>${fmtNum(r.mileage)} км</td>
           <td>${fmtMoney(r.cost || 0)}</td>
-          <td>${escapeHtml(r.comment || '—')}</td>
         </tr>
-      `).join('') || '<tr><td colspan="8" class="empty">Нет поездок. Добавьте первую поездку.</td></tr>';
+      `).join('') || '<tr><td colspan="6" class="empty">Нет поездок. Добавьте первую поездку.</td></tr>';
 
-      const byDest = {};
-      rows.forEach(r => { const key = r.objectName || 'Без объекта'; if (!byDest[key]) byDest[key] = {count:0,mileage:0,cost:0}; byDest[key].count++; byDest[key].mileage += r.mileage||0; byDest[key].cost += r.cost||0; });
-      document.getElementById('frequentDestinations').innerHTML = Object.entries(byDest).sort((a,b)=>b[1].count-a[1].count).slice(0,5).map(([k,v]) =>
-        `<div class="card" style="padding:10px;margin-bottom:8px;"><b>${escapeHtml(k)}</b><div class="small">${v.count} поездок · ${fmtNum(v.mileage)} км · ${fmtMoney(v.cost)}</div></div>`
-      ).join('') || '<div class="small">Недостаточно данных.</div>';
+      const byEmployee = {};
+      state.employees.forEach(emp => { byEmployee[emp] = 0; });
+      rows.forEach(r => {
+        const key = r.employee || 'Без сотрудника';
+        byEmployee[key] = (byEmployee[key] || 0) + (r.cost || 0);
+      });
+      document.getElementById('employeeAccumulations').innerHTML = Object.entries(byEmployee)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([employee, amount]) => `<div class="item" style="display:flex;justify-content:space-between;gap:10px;"><span>${escapeHtml(employee)}</span><b>${fmtMoney(amount)}</b></div>`)
+        .join('') || '<div class="small">Пока нет начислений.</div>';
 
-      const totalMileage = rows.reduce((s, x) => s + (x.mileage || 0), 0);
-      const totalCost = rows.reduce((s, x) => s + (x.cost || 0), 0);
-      document.getElementById('tripStats').innerHTML = `<div class="item"><b>Суммарный пробег:</b> ${fmtNum(totalMileage)} км</div><div class="item"><b>Суммарные расходы:</b> ${fmtMoney(totalCost)}</div><div class="item"><b>Поездок:</b> ${rows.length}</div>`;
+      document.getElementById('tripRules').innerHTML =
+        `<div class="item"><b>Формула:</b> сумма = километраж × 1.5</div>
+         <div class="item"><b>Ограничение:</b> поездки добавляются только для личных автомобилей.</div>
+         <div class="small">Начисления суммируются по каждому сотруднику для учета накопительных средств.</div>`;
     }
 
     function renderHistory() {
@@ -328,6 +318,7 @@
           <label>Госномер<input required name="plate"></label>
           <label>Водитель (опц.)<input name="driver" list="employees"></label>
           <label>Текущий пробег<input required type="number" min="0" name="mileage"></label>
+          <label>Тип автомобиля<select required name="ownershipType"><option value="company">Служебный</option><option value="personal">Личный</option></select></label>
           <label>Ближайшее ТО (км)<input type="number" min="0" name="nextMaintenance"></label>
           <label class="full">Комментарий<textarea name="comment" rows="2"></textarea></label>
           ${datalist('employees', state.employees)}
@@ -349,20 +340,17 @@
       }
 
       if (type === 'trip') {
+        const personalCars = state.cars.filter(c => c.isPersonal).map(c => c.name);
         form.innerHTML = `<div class="form-grid">
           <label>Дата<input required type="date" name="date"></label>
-          <label>Автомобиль<input required name="car" list="cars"></label>
+          <label>Автомобиль (личный)<input required name="car" list="personalCars"></label>
           <label>Сотрудник<input required name="employee" list="employees"></label>
-          <label>Тип поездки<input required name="tripType" placeholder="Объект / межгород / сервис"></label>
-          <label>Объект<input name="objectName" list="objects"></label>
           <label>Маршрут<input name="route" placeholder="Ульяновск → Самара"></label>
           <label class="full">Цель поездки<input name="purpose"></label>
           <label>Километраж<input required type="number" min="1" name="mileage"></label>
-          <label>Расходы<input required type="number" min="0" name="cost"></label>
-          <label class="full">Комментарий<textarea name="comment" rows="2"></textarea></label>
-          ${datalist('cars', state.cars.map(c=>c.name))}
+          <label>Сумма (авто)<input type="text" id="tripCostPreview" value="₽ 0" readonly></label>
+          ${datalist('personalCars', personalCars)}
           ${datalist('employees', state.employees)}
-          ${datalist('objects', state.objects)}
         </div>`;
       }
 
@@ -370,6 +358,13 @@
       document.getElementById('modal').style.display = 'flex';
       const d = form.querySelector('[name="date"]');
       if (d) d.value = new Date().toISOString().slice(0,10);
+      const mileageInput = form.querySelector('[name="mileage"]');
+      const costPreview = form.querySelector('#tripCostPreview');
+      if (mileageInput && costPreview) {
+        const updateTripCost = () => { costPreview.value = fmtMoney((Number(mileageInput.value) || 0) * 1.5); };
+        mileageInput.addEventListener('input', updateTripCost);
+        updateTripCost();
+      }
     }
 
     function closeModal() { document.getElementById('modal').style.display = 'none'; }
@@ -393,7 +388,6 @@
           state.services = data.services || [];
           state.employees = data.employees || [];
           state.objects = data.objects || [];
-          renderKpis();
           renderMaintenance();
           renderTrips();
           renderHistory();
