@@ -24,6 +24,11 @@
     .ok { color: #188038; }
     .err { color: #b3261e; }
     .pill { display: inline-block; background: #eef4ff; color: #2f6fed; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, .45); display: none; align-items: center; justify-content: center; z-index: 20; }
+    .modal-backdrop.open { display: flex; }
+    .modal { width: min(720px, 95vw); max-height: 88vh; overflow: auto; background: #fff; border-radius: 14px; padding: 18px; box-shadow: 0 12px 32px rgba(15,23,42,.35); }
+    .perm-grid { display: grid; grid-template-columns: repeat(2, minmax(220px, 1fr)); gap: 10px; margin-top: 10px; }
+    .perm-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 10px; }
   </style>
 </head>
 <body>
@@ -48,6 +53,7 @@
               <th>Поиск</th>
               <th>Дашборд кладовщика</th>
               <th>Дашборд руководителя</th>
+              <th>Автопарк и поездки</th>
               <th>Управление доступом</th>
               <th>Обновить всё</th>
               <th>Комментарий</th>
@@ -56,7 +62,10 @@
           <tbody id="rolesBody"></tbody>
         </table>
       </div>
-      <div class="muted" style="margin-top:8px;">Чтобы добавить новую роль, просто добавь новую строку на листе <b>Роли доступа</b> и укажи Да/Нет по каждому разделу.</div>
+      <div class="btn-row">
+        <button class="btn-secondary" onclick="openAddRoleModal()">Добавить роль</button>
+      </div>
+      <div class="muted" style="margin-top:8px;">Роли можно добавлять через кнопку или напрямую в листе <b>Роли доступа</b>.</div>
     </div>
 
     <div class="card">
@@ -81,6 +90,28 @@
         <button class="btn-secondary" onclick="loadData()">Обновить</button>
       </div>
       <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <div id="addRoleModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="section">Новая роль</div>
+      <div class="grid" style="grid-template-columns: 1fr;">
+        <div>
+          <label>Название роли</label>
+          <input id="newRoleName" placeholder="Например: Логист">
+        </div>
+        <div>
+          <label>Комментарий</label>
+          <input id="newRoleComment" placeholder="Краткое описание">
+        </div>
+      </div>
+      <div class="section" style="margin-top:14px;">Доступы к панелям</div>
+      <div id="newRolePerms" class="perm-grid"></div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="saveRole()">Сохранить роль</button>
+        <button class="btn-secondary" onclick="closeAddRoleModal()">Отмена</button>
+      </div>
     </div>
   </div>
 
@@ -121,6 +152,7 @@
           '<td>' + yesNo(p.search) + '</td>' +
           '<td>' + yesNo(p.storekeeperDashboard) + '</td>' +
           '<td>' + yesNo(p.managementDashboard) + '</td>' +
+          '<td>' + yesNo(p.fleetDashboard) + '</td>' +
           '<td>' + yesNo(p.manageAccess) + '</td>' +
           '<td>' + yesNo(p.refreshAll) + '</td>' +
           '<td>' + escapeHtml(role.comment || '') + '</td>' +
@@ -192,6 +224,54 @@
         .withSuccessHandler(function(msg) { setStatus(msg, true); })
         .withFailureHandler(function(err) { setStatus('Ошибка: ' + (err.message || err), false); })
         .syncSheetProtections();
+    }
+
+    function openAddRoleModal() {
+      const permsBox = document.getElementById('newRolePerms');
+      const labels = (accessData.currentUser && accessData.currentUser.permissionLabels) || {};
+      const keys = ['menu', 'inventory', 'search', 'storekeeperDashboard', 'managementDashboard', 'fleetDashboard', 'manageAccess', 'refreshAll'];
+      permsBox.innerHTML = keys.map(function(key) {
+        return '<label class="perm-item">' +
+          '<span>' + escapeHtml(labels[key] || key) + '</span>' +
+          '<select id="perm-' + key + '"><option value="false">Нет</option><option value="true">Да</option></select>' +
+        '</label>';
+      }).join('');
+      document.getElementById('newRoleName').value = '';
+      document.getElementById('newRoleComment').value = '';
+      document.getElementById('addRoleModal').classList.add('open');
+    }
+
+    function closeAddRoleModal() {
+      document.getElementById('addRoleModal').classList.remove('open');
+    }
+
+    function saveRole() {
+      const roleName = (document.getElementById('newRoleName').value || '').trim();
+      const roleComment = (document.getElementById('newRoleComment').value || '').trim();
+      if (!roleName) {
+        setStatus('Укажи название роли.', false);
+        return;
+      }
+      const keys = ['menu', 'inventory', 'search', 'storekeeperDashboard', 'managementDashboard', 'fleetDashboard', 'manageAccess', 'refreshAll'];
+      const permissions = {};
+      keys.forEach(function(key) {
+        permissions[key] = document.getElementById('perm-' + key).value === 'true';
+      });
+      setStatus('Сохраняем роль...', true);
+      google.script.run
+        .withSuccessHandler(function(msg) {
+          closeAddRoleModal();
+          setStatus(msg, true);
+          loadData();
+        })
+        .withFailureHandler(function(err) {
+          setStatus('Ошибка: ' + (err.message || err), false);
+        })
+        .saveAccessRole({
+          role: roleName,
+          comment: roleComment,
+          permissions: permissions
+        });
     }
 
     function loadData() {

@@ -119,6 +119,7 @@
       <button class="btn" onclick="openModal('car')">Добавить автомобиль</button>
       <button class="btn primary" onclick="openModal('service')">Добавить ТО / ремонт</button>
       <button class="btn primary" onclick="openModal('trip')">Добавить поездку</button>
+      <button class="btn" onclick="openModal('writeoff')">Списать накопления</button>
     </div>
   </div>
 
@@ -157,7 +158,7 @@
     </div>
     <div class="grid-2">
       <div class="card"><h3>Накопления сотрудников</h3><div id="employeeAccumulations"></div></div>
-      <div class="card"><h3>Условия начисления</h3><div id="tripRules"></div></div>
+      <div class="card"><h3>Списания накоплений</h3><div id="tripRules"></div></div>
     </div>
   </div>
 
@@ -181,7 +182,7 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    const state = { cars: [], trips: [], history: [], services: [], employees: [], objects: [], tab: 'trips', modal: null };
+    const state = { cars: [], trips: [], history: [], services: [], employees: [], objects: [], accumulations: [], writeoffs: [], tab: 'trips', modal: null };
 
     const fmtNum = n => (Number(n) || 0).toLocaleString('ru-RU');
     const fmtMoney = n => '₽ ' + fmtNum(n);
@@ -227,7 +228,6 @@
           <td>${escapeHtml(r.lastServiceDate || '—')}</td>
           <td>${fmtNum(r.mileage)} км</td>
           <td>${fmtMoney(r.totalMaintenanceCost || 0)}</td>
-          <td><div class="chips">${chips}</div></td>
           <td>${r.nextMaintenance ? fmtNum(r.nextMaintenance) + ' км' : '—'}</td>
           <td><span class="status ${getStatusClass(r.status)}">${escapeHtml(r.status)}</span></td>
         </tr>`;
@@ -266,21 +266,25 @@
         </tr>
       `).join('') || '<tr><td colspan="6" class="empty">Нет поездок. Добавьте первую поездку.</td></tr>';
 
-      const byEmployee = {};
-      state.employees.forEach(emp => { byEmployee[emp] = 0; });
-      rows.forEach(r => {
-        const key = r.employee || 'Без сотрудника';
-        byEmployee[key] = (byEmployee[key] || 0) + (r.cost || 0);
-      });
-      document.getElementById('employeeAccumulations').innerHTML = Object.entries(byEmployee)
-        .sort((a,b)=>b[1]-a[1])
-        .map(([employee, amount]) => `<div class="item" style="display:flex;justify-content:space-between;gap:10px;"><span>${escapeHtml(employee)}</span><b>${fmtMoney(amount)}</b></div>`)
+      const accumulationRows = (state.accumulations || []).slice().sort((a,b)=>(b.available || 0) - (a.available || 0));
+      document.getElementById('employeeAccumulations').innerHTML = accumulationRows
+        .map(row => `<div class="item" style="display:flex;justify-content:space-between;gap:10px;">
+            <span>${escapeHtml(row.employee || 'Без сотрудника')}</span>
+            <span class="small">Начислено: <b>${fmtMoney(row.accrued || 0)}</b> · Списано: <b>${fmtMoney(row.writtenOff || 0)}</b></span>
+            <b>${fmtMoney(row.available || 0)}</b>
+          </div>`)
         .join('') || '<div class="small">Пока нет начислений.</div>';
 
+      const writeoffRows = (state.writeoffs || []).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0, 8);
+      const writeoffHtml = writeoffRows.map(row => `<div class="item">
+          <div style="display:flex;justify-content:space-between;gap:10px;"><b>${escapeHtml(row.employee || 'Без сотрудника')}</b><b>${fmtMoney(row.amount || 0)}</b></div>
+          <div class="small">${escapeHtml(row.date || '—')} · ${escapeHtml(row.reason || 'Без основания')}</div>
+          ${row.comment ? `<div class="small">${escapeHtml(row.comment)}</div>` : ''}
+        </div>`).join('');
       document.getElementById('tripRules').innerHTML =
-        `<div class="item"><b>Формула:</b> сумма = километраж × 1.5</div>
-         <div class="item"><b>Ограничение:</b> поездки добавляются только для личных автомобилей.</div>
-         <div class="small">Начисления суммируются по каждому сотруднику для учета накопительных средств.</div>`;
+        `<div class="item"><b>Формула накоплений:</b> сумма = километраж × 1.5</div>
+         <div class="item"><b>Ограничение:</b> списание не может превышать доступный остаток сотрудника.</div>
+         ${writeoffHtml || '<div class="small">Списаний пока нет.</div>'}`;
     }
 
     function renderHistory() {
@@ -308,7 +312,7 @@
 
     function openModal(type) {
       state.modal = type;
-      const title = { car: 'Добавить автомобиль', service: 'Добавить ТО / ремонт', trip: 'Добавить поездку' }[type];
+      const title = { car: 'Добавить автомобиль', service: 'Добавить ТО / ремонт', trip: 'Добавить поездку', writeoff: 'Списать накопления сотрудника' }[type];
       document.getElementById('modalTitle').textContent = title;
       const form = document.getElementById('form');
 
@@ -354,6 +358,17 @@
         </div>`;
       }
 
+      if (type === 'writeoff') {
+        form.innerHTML = `<div class="form-grid">
+          <label>Дата<input required type="date" name="date"></label>
+          <label>Сотрудник<input required name="employee" list="employees"></label>
+          <label>Сумма списания<input required type="number" min="0.01" step="0.01" name="amount"></label>
+          <label>Основание<input required name="reason" placeholder="Например: автомагазин"></label>
+          <label class="full">Комментарий<textarea name="comment" rows="2" placeholder="Например: замена масла"></textarea></label>
+          ${datalist('employees', state.employees)}
+        </div>`;
+      }
+
       form.innerHTML += `<div class="row"><button class="btn" type="button" onclick="closeModal()">Отмена</button><button class="btn primary" type="submit">Сохранить</button></div>`;
       document.getElementById('modal').style.display = 'flex';
       const d = form.querySelector('[name="date"]');
@@ -373,7 +388,7 @@
       e.preventDefault();
       const fd = new FormData(e.target);
       const payload = Object.fromEntries(fd.entries());
-      const map = { car: 'saveFleetVehicle', service: 'saveFleetService', trip: 'saveFleetTrip' };
+      const map = { car: 'saveFleetVehicle', service: 'saveFleetService', trip: 'saveFleetTrip', writeoff: 'saveFleetAccumulationWriteoff' };
       google.script.run
         .withSuccessHandler(msg => { showToast(msg || 'Сохранено', true); closeModal(); loadData(); })
         .withFailureHandler(err => showToast('Ошибка: ' + (err.message || err), false))[map[state.modal]](payload);
@@ -388,6 +403,8 @@
           state.services = data.services || [];
           state.employees = data.employees || [];
           state.objects = data.objects || [];
+          state.accumulations = data.accumulations || [];
+          state.writeoffs = data.writeoffs || [];
           renderMaintenance();
           renderTrips();
           renderHistory();
