@@ -12,7 +12,7 @@ function onOpen() {
   if (access.permissions.search) menu.addItem('3. Поиск товара', 'showSearchForm');
   if (access.permissions.storekeeperDashboard) menu.addItem('4. Дашборд кладовщика', 'showStorekeeperDashboard');
   if (access.permissions.managementDashboard) menu.addItem('5. Дашборд руководителя', 'showManagementDashboard');
-  if (access.permissions.managementDashboard) menu.addItem('6. Автопарк и поездки', 'showFleetTripsDashboard');
+  if (access.permissions.fleetDashboard) menu.addItem('6. Автопарк и поездки', 'showFleetTripsDashboard');
   if (access.permissions.manageAccess) {
     menu.addSeparator();
     menu.addItem('6. Управление доступом', 'showAccessAdminPanel');
@@ -28,6 +28,7 @@ const ACCESS_PERMISSION_FIELDS = [
   'search',
   'storekeeperDashboard',
   'managementDashboard',
+  'fleetDashboard',
   'manageAccess',
   'refreshAll'
 ];
@@ -37,12 +38,63 @@ const ACCESS_PERMISSION_LABELS = {
   search: 'Поиск',
   storekeeperDashboard: 'Дашборд кладовщика',
   managementDashboard: 'Дашборд руководителя',
+  fleetDashboard: 'Автопарк и поездки',
   manageAccess: 'Управление доступом',
   refreshAll: 'Обновить всё'
 };
+const ACCESS_ROLE_COMMENT_HEADER = 'Комментарий';
 
 function normalizeEmail_(value) {
   return String(value || '').trim().toLowerCase();
+}
+
+function getRoleSheetHeaders_() {
+  return ['Роль'].concat(ACCESS_PERMISSION_FIELDS.map(function (key) {
+    return ACCESS_PERMISSION_LABELS[key];
+  })).concat([ACCESS_ROLE_COMMENT_HEADER]);
+}
+
+function getRoleColumnIndexes_(sheet) {
+  const headers = getRoleSheetHeaders_();
+  const currentLastCol = Math.max(sheet.getLastColumn(), 1);
+  const currentHeader = sheet.getRange(1, 1, 1, currentLastCol).getValues()[0];
+  const missing = headers.some(function (h) { return currentHeader.indexOf(h) === -1; });
+
+  if (missing || currentHeader[0] !== 'Роль') {
+    const existing = sheet.getLastRow() >= 2 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, currentLastCol).getValues() : [];
+    const byHeader = {};
+    currentHeader.forEach(function (h, i) {
+      byHeader[String(h || '').trim()] = i;
+    });
+    const migrated = existing.map(function (row) {
+      const out = headers.map(function () { return ''; });
+      headers.forEach(function (h, idx) {
+        const oldIdx = byHeader[h];
+        if (typeof oldIdx === 'number') out[idx] = row[oldIdx];
+      });
+      return out;
+    });
+
+    sheet.clear();
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    if (migrated.length) {
+      sheet.getRange(2, 1, migrated.length, headers.length).setValues(migrated);
+    }
+    formatHeader_(sheet, 1, 1, 1, headers.length);
+    sheet.setFrozenRows(1);
+    autoResize_(sheet, 1, headers.length);
+  }
+
+  const finalHeader = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  const map = {};
+  finalHeader.forEach(function (h, i) {
+    map[String(h || '').trim()] = i;
+  });
+  return {
+    header: finalHeader,
+    indexes: map,
+    totalColumns: headers.length
+  };
 }
 
 function ensureAccessControlSheets_() {
@@ -51,12 +103,12 @@ function ensureAccessControlSheets_() {
   let roleSheet = ss.getSheetByName(ACCESS_ROLE_SHEET);
   if (!roleSheet) roleSheet = ss.insertSheet(ACCESS_ROLE_SHEET);
   if (roleSheet.getLastRow() === 0) {
-    const headers = [['Роль', 'Меню', 'Инвентаризация', 'Поиск', 'Дашборд кладовщика', 'Дашборд руководителя', 'Управление доступом', 'Обновить всё', 'Комментарий']];
+    const headers = [getRoleSheetHeaders_()];
     const rows = [
-      ['Руководитель', 'Да', 'Да', 'Да', 'Да', 'Да', 'Да', 'Да', 'Полный доступ'],
-      ['Прораб', 'Да', 'Да', 'Да', 'Нет', 'Нет', 'Нет', 'Нет', 'Инвентаризация и поиск'],
-      ['Инженер по закупкам', 'Да', 'Нет', 'Да', 'Да', 'Нет', 'Нет', 'Нет', 'Поиск и дашборд кладовщика'],
-      ['Инженер по снабжению', 'Да', 'Да', 'Да', 'Да', 'Да', 'Да', 'Да', 'Полный доступ']
+      ['Руководитель', 'Да', 'Да', 'Да', 'Да', 'Да', 'Да', 'Да', 'Да', 'Полный доступ'],
+      ['Прораб', 'Да', 'Да', 'Да', 'Нет', 'Нет', 'Нет', 'Нет', 'Нет', 'Инвентаризация и поиск'],
+      ['Инженер по закупкам', 'Да', 'Нет', 'Да', 'Да', 'Нет', 'Нет', 'Нет', 'Нет', 'Поиск и дашборд кладовщика'],
+      ['Инженер по снабжению', 'Да', 'Да', 'Да', 'Да', 'Да', 'Да', 'Да', 'Да', 'Полный доступ']
     ];
     roleSheet.getRange(1, 1, 1, headers[0].length).setValues(headers);
     roleSheet.getRange(2, 1, rows.length, rows[0].length).setValues(rows);
@@ -64,6 +116,7 @@ function ensureAccessControlSheets_() {
     roleSheet.setFrozenRows(1);
     autoResize_(roleSheet, 1, headers[0].length);
   }
+  getRoleColumnIndexes_(roleSheet);
 
   let userSheet = ss.getSheetByName(ACCESS_USERS_SHEET);
   if (!userSheet) userSheet = ss.insertSheet(ACCESS_USERS_SHEET);
@@ -93,25 +146,23 @@ function getAccessRolesMap_() {
   ensureAccessControlSheets_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(ACCESS_ROLE_SHEET);
+  const cols = getRoleColumnIndexes_(sheet);
   const lastRow = sheet.getLastRow();
   const map = {};
   if (lastRow < 2) return map;
-  const data = sheet.getRange(2, 1, lastRow - 1, 9).getValues();
+  const data = sheet.getRange(2, 1, lastRow - 1, cols.totalColumns).getValues();
   data.forEach(function (r) {
-    const role = String(r[0] || '').trim();
+    const role = String(r[cols.indexes['Роль']] || '').trim();
     if (!role) return;
+    const permissions = {};
+    ACCESS_PERMISSION_FIELDS.forEach(function (key) {
+      const colName = ACCESS_PERMISSION_LABELS[key];
+      permissions[key] = toBoolAccess_(r[cols.indexes[colName]]);
+    });
     map[role] = {
       role: role,
-      permissions: {
-        menu: toBoolAccess_(r[1]),
-        inventory: toBoolAccess_(r[2]),
-        search: toBoolAccess_(r[3]),
-        storekeeperDashboard: toBoolAccess_(r[4]),
-        managementDashboard: toBoolAccess_(r[5]),
-        manageAccess: toBoolAccess_(r[6]),
-        refreshAll: toBoolAccess_(r[7])
-      },
-      comment: String(r[8] || '').trim()
+      permissions: permissions,
+      comment: String(r[cols.indexes[ACCESS_ROLE_COMMENT_HEADER]] || '').trim()
     };
   });
   return map;
@@ -147,6 +198,7 @@ function getCurrentUserAccess_() {
     search: false,
     storekeeperDashboard: false,
     managementDashboard: false,
+    fleetDashboard: false,
     manageAccess: false,
     refreshAll: false
   };
@@ -197,6 +249,31 @@ function getAccessControlData() {
     roles: roles,
     users: users
   };
+}
+
+function saveAccessRole(payload) {
+  requirePermission_('manageAccess', 'управление доступом');
+  ensureAccessControlSheets_();
+
+  const roleName = String(payload && payload.role || '').trim();
+  const comment = String(payload && payload.comment || '').trim();
+  const permissionsPayload = payload && payload.permissions || {};
+
+  if (!roleName) throw new Error('Укажи название роли.');
+
+  const rolesMap = getAccessRolesMap_();
+  if (rolesMap[roleName]) throw new Error('Роль с таким названием уже существует.');
+
+  const permissionValues = ACCESS_PERMISSION_FIELDS.map(function (key) {
+    return permissionsPayload[key] ? 'Да' : 'Нет';
+  });
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(ACCESS_ROLE_SHEET);
+  const row = [roleName].concat(permissionValues).concat([comment]);
+  sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
+  autoResize_(sheet, 1, row.length);
+  return 'Роль добавлена: ' + roleName;
 }
 
 function saveAccessControlData(payload) {
@@ -667,7 +744,7 @@ function showManagementDashboard() {
 }
 
 function showFleetTripsDashboard() {
-  requirePermission_('managementDashboard', 'панель автопарка и поездок');
+  requirePermission_('fleetDashboard', 'панель автопарка и поездок');
   const html = HtmlService.createHtmlOutputFromFile('FleetTripsDashboard')
     .setWidth(1480)
     .setHeight(920);
@@ -3210,7 +3287,7 @@ function toIsoDate_(value) {
 }
 
 function getFleetTripsInitData() {
-  requirePermission_('managementDashboard', 'данные панели автопарка и поездок');
+  requirePermission_('fleetDashboard', 'данные панели автопарка и поездок');
   ensureFleetTripsSheets_();
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -3312,7 +3389,7 @@ function getFleetTripsInitData() {
 }
 
 function saveFleetVehicle(payload) {
-  requirePermission_('managementDashboard', 'добавление автомобиля');
+  requirePermission_('fleetDashboard', 'добавление автомобиля');
   ensureFleetTripsSheets_();
 
   const car = String(payload && payload.name || '').trim();
@@ -3338,7 +3415,7 @@ function saveFleetVehicle(payload) {
 }
 
 function saveFleetService(payload) {
-  requirePermission_('managementDashboard', 'добавление ТО/ремонта');
+  requirePermission_('fleetDashboard', 'добавление ТО/ремонта');
   ensureFleetTripsSheets_();
 
   const car = String(payload && payload.car || '').trim();
@@ -3381,7 +3458,7 @@ function saveFleetService(payload) {
 }
 
 function saveFleetTrip(payload) {
-  requirePermission_('managementDashboard', 'добавление поездки');
+  requirePermission_('fleetDashboard', 'добавление поездки');
   ensureFleetTripsSheets_();
 
   const date = payload && payload.date ? new Date(payload.date) : new Date();
