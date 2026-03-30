@@ -3259,6 +3259,10 @@ function ensureFleetTripsSheets_() {
     {
       name: 'Поездки автопарк',
       headers: ['ID', 'Дата', 'Автомобиль', 'Сотрудник', 'Тип поездки', 'Объект', 'Маршрут', 'Цель', 'Километраж', 'Расходы', 'Комментарий', 'Создано', 'Кем']
+    },
+    {
+      name: 'Списания накоплений',
+      headers: ['ID', 'Дата', 'Сотрудник', 'Сумма', 'Основание', 'Комментарий', 'Создано', 'Кем']
     }
   ];
 
@@ -3294,11 +3298,13 @@ function getFleetTripsInitData() {
   const fleetSh = ss.getSheetByName('Автопарк');
   const serviceSh = ss.getSheetByName('ТО и ремонты');
   const tripSh = ss.getSheetByName('Поездки автопарк');
+  const writeoffSh = ss.getSheetByName('Списания накоплений');
   const dir = ss.getSheetByName('Справочник');
 
   const fleetRows = fleetSh.getLastRow() >= 2 ? fleetSh.getRange(2, 1, fleetSh.getLastRow() - 1, 10).getValues() : [];
   const serviceRows = serviceSh.getLastRow() >= 2 ? serviceSh.getRange(2, 1, serviceSh.getLastRow() - 1, 11).getValues() : [];
   const tripRows = tripSh.getLastRow() >= 2 ? tripSh.getRange(2, 1, tripSh.getLastRow() - 1, 13).getValues() : [];
+  const writeoffRows = writeoffSh.getLastRow() >= 2 ? writeoffSh.getRange(2, 1, writeoffSh.getLastRow() - 1, 8).getValues() : [];
 
   const objects = dir ? getColumnValues(dir, 1, 2) : [];
   const employees = dir ? getEmployees_() : [];
@@ -3335,6 +3341,49 @@ function getFleetTripsInitData() {
       cost: Number(r[9]) || 0,
       comment: String(r[10] || '').trim()
     };
+  });
+
+  const accumulationMap = {};
+  trips.forEach(function (trip) {
+    const key = String(trip.employee || '').trim() || 'Без сотрудника';
+    if (!accumulationMap[key]) {
+      accumulationMap[key] = { employee: key, accrued: 0, writtenOff: 0, available: 0 };
+    }
+    accumulationMap[key].accrued += Number(trip.cost) || 0;
+  });
+
+  const writeoffs = writeoffRows.map(function (r) {
+    return {
+      id: String(r[0] || '').trim(),
+      date: toIsoDate_(r[1]),
+      employee: String(r[2] || '').trim(),
+      amount: Number(r[3]) || 0,
+      reason: String(r[4] || '').trim(),
+      comment: String(r[5] || '').trim()
+    };
+  });
+
+  writeoffs.forEach(function (row) {
+    const key = String(row.employee || '').trim() || 'Без сотрудника';
+    if (!accumulationMap[key]) {
+      accumulationMap[key] = { employee: key, accrued: 0, writtenOff: 0, available: 0 };
+    }
+    accumulationMap[key].writtenOff += Number(row.amount) || 0;
+  });
+
+  employees.forEach(function (employee) {
+    const key = String(employee || '').trim();
+    if (!key) return;
+    if (!accumulationMap[key]) {
+      accumulationMap[key] = { employee: key, accrued: 0, writtenOff: 0, available: 0 };
+    }
+  });
+
+  Object.keys(accumulationMap).forEach(function (employee) {
+    const entry = accumulationMap[employee];
+    entry.accrued = round2_(entry.accrued);
+    entry.writtenOff = round2_(entry.writtenOff);
+    entry.available = round2_(Math.max(0, entry.accrued - entry.writtenOff));
   });
 
   const cars = fleetRows.map(function (r) {
@@ -3384,7 +3433,9 @@ function getFleetTripsInitData() {
     cars: cars,
     services: serviceRows.length ? Object.keys(servicesByCar).reduce(function (acc, car) { return acc.concat(servicesByCar[car]); }, []) : [],
     trips: trips,
-    history: history
+    history: history,
+    accumulations: Object.keys(accumulationMap).map(function (key) { return accumulationMap[key]; }),
+    writeoffs: writeoffs
   };
 }
 
@@ -3509,4 +3560,43 @@ function saveFleetTrip(payload) {
   }
 
   return 'Поездка сохранена.';
+}
+
+function getEmployeeAccumulationsMap_() {
+  const data = getFleetTripsInitData();
+  const map = {};
+  (data.accumulations || []).forEach(function (row) {
+    map[row.employee] = row;
+  });
+  return map;
+}
+
+function saveFleetAccumulationWriteoff(payload) {
+  requirePermission_('fleetDashboard', 'списание накоплений сотрудников');
+  ensureFleetTripsSheets_();
+
+  const employee = String(payload && payload.employee || '').trim();
+  const amount = Number(payload && payload.amount);
+  const reason = String(payload && payload.reason || '').trim();
+  const comment = String(payload && payload.comment || '').trim();
+  const writeoffDate = payload && payload.date ? new Date(payload.date) : new Date();
+
+  if (!employee) throw new Error('Укажи сотрудника.');
+  if (!isFinite(amount) || amount <= 0) throw new Error('Сумма списания должна быть больше 0.');
+  if (!reason) throw new Error('Укажи основание списания (например: автомагазин, замена масла).');
+
+  const accumulations = getEmployeeAccumulationsMap_();
+  const available = Number(accumulations[employee] && accumulations[employee].available) || 0;
+  if (amount > available) {
+    throw new Error('Недостаточно накоплений. Доступно: ' + fmtMoney_(available) + ', запрошено: ' + fmtMoney_(amount) + '.');
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName('Списания накоплений');
+  const now = new Date();
+  const user = getCurrentUserEmail_();
+  const id = 'WOF-' + Utilities.getUuid().slice(0, 8).toUpperCase();
+
+  sh.appendRow([id, writeoffDate, employee, round2_(amount), reason, comment, now, user]);
+  return 'Списание сохранено: ' + employee + ' — ' + fmtMoney_(amount);
 }
