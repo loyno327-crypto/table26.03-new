@@ -152,7 +152,7 @@
     </div>
     <div style="overflow:auto;">
       <table>
-        <thead><tr><th>Дата</th><th>Маршрут</th><th>Автомобиль / сотрудник</th><th>Цель поездки</th><th>Км</th><th>Сумма</th></tr></thead>
+        <thead><tr><th>Дата</th><th>Маршрут</th><th>Автомобиль / сотрудник</th><th>Цель поездки</th><th>Км</th><th>Сумма</th><th>Действия</th></tr></thead>
         <tbody id="tripRows"></tbody>
       </table>
     </div>
@@ -263,8 +263,9 @@
           <td>${escapeHtml(r.purpose || '—')}</td>
           <td>${fmtNum(r.mileage)} км</td>
           <td>${fmtMoney(r.cost || 0)}</td>
+          <td><button class="btn" type="button" onclick="deleteTrip('${escapeHtml(r.id)}')">Удалить</button></td>
         </tr>
-      `).join('') || '<tr><td colspan="6" class="empty">Нет поездок. Добавьте первую поездку.</td></tr>';
+      `).join('') || '<tr><td colspan="7" class="empty">Нет поездок. Добавьте первую поездку.</td></tr>';
 
       const accumulationRows = (state.accumulations || []).slice().sort((a,b)=>(b.available || 0) - (a.available || 0));
       document.getElementById('employeeAccumulations').innerHTML = accumulationRows
@@ -344,16 +345,14 @@
       }
 
       if (type === 'trip') {
-        const personalCars = state.cars.filter(c => c.isPersonal).map(c => c.name);
         form.innerHTML = `<div class="form-grid">
           <label>Дата<input required type="date" name="date"></label>
-          <label>Автомобиль (личный)<input required name="car" list="personalCars"></label>
+          <label>Автомобиль (личный)<input required name="car" placeholder="Можно ввести любой автомобиль"></label>
           <label>Сотрудник<input required name="employee" list="employees"></label>
           <label>Маршрут<input name="route" placeholder="Ульяновск → Самара"></label>
           <label class="full">Цель поездки<input name="purpose"></label>
           <label>Километраж<input required type="number" min="1" name="mileage"></label>
           <label>Сумма (авто)<input type="text" id="tripCostPreview" value="₽ 0" readonly></label>
-          ${datalist('personalCars', personalCars)}
           ${datalist('employees', state.employees)}
         </div>`;
       }
@@ -392,6 +391,15 @@
       google.script.run
         .withSuccessHandler(msg => { showToast(msg || 'Сохранено', true); closeModal(); loadData(); })
         .withFailureHandler(err => showToast('Ошибка: ' + (err.message || err), false))[map[state.modal]](payload);
+    }
+
+    function deleteTrip(id) {
+      if (!id) return;
+      if (!confirm('Удалить поездку из журнала?')) return;
+      google.script.run
+        .withSuccessHandler(msg => { showToast(msg || 'Поездка удалена', true); loadData(); })
+        .withFailureHandler(err => showToast('Ошибка удаления: ' + (err.message || err), false))
+        .deleteFleetTrip(id);
     }
 
     function loadData() {

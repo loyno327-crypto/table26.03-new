@@ -3491,6 +3491,18 @@ function saveFleetService(payload) {
   const user = getCurrentUserEmail_();
   const id = 'SRV-' + Utilities.getUuid().slice(0, 8).toUpperCase();
 
+  let carExists = false;
+  if (fleet.getLastRow() >= 2) {
+    const fleetData = fleet.getRange(2, 1, fleet.getLastRow() - 1, 2).getValues();
+    for (var j = 0; j < fleetData.length; j++) {
+      if (String(fleetData[j][1] || '').trim() === car) {
+        carExists = true;
+        break;
+      }
+    }
+  }
+  if (!carExists) throw new Error('Автомобиль для ТО/ремонта должен быть из списка добавленных автомобилей.');
+
   sh.appendRow([id, date, car, workType, mileage, works, amount, comment, isFinite(nextTO) ? nextTO : '', now, user]);
 
   if (fleet.getLastRow() >= 2) {
@@ -3528,38 +3540,35 @@ function saveFleetTrip(payload) {
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName('Поездки автопарк');
-  const fleet = ss.getSheetByName('Автопарк');
   const now = new Date();
   const user = getCurrentUserEmail_();
-  let personalCarValidated = false;
-  if (fleet.getLastRow() >= 2) {
-    const fleetData = fleet.getRange(2, 1, fleet.getLastRow() - 1, 10).getValues();
-    for (var i = 0; i < fleetData.length; i++) {
-      if (String(fleetData[i][1] || '').trim() !== car) continue;
-      if (String(fleetData[i][9] || '').trim() !== 'personal') {
-        throw new Error('Поездки можно добавлять только для личных автомобилей.');
-      }
-      personalCarValidated = true;
-      break;
-    }
-  }
-  if (!personalCarValidated) throw new Error('Автомобиль не найден в реестре личных автомобилей.');
 
   const id = 'TRP-' + Utilities.getUuid().slice(0, 8).toUpperCase();
 
   sh.appendRow([id, date, car, employee, 'Личный автомобиль', '', route, purpose, mileage, cost, '', now, user]);
 
-  if (fleet.getLastRow() >= 2) {
-    const fleetData = fleet.getRange(2, 1, fleet.getLastRow() - 1, 10).getValues();
-    for (var i = 0; i < fleetData.length; i++) {
-      if (String(fleetData[i][1] || '').trim() !== car) continue;
-      const currentMileage = Number(fleetData[i][4]) || 0;
-      fleet.getRange(i + 2, 5).setValue(currentMileage + mileage);
-      break;
-    }
+  return 'Поездка сохранена.';
+}
+
+function deleteFleetTrip(tripId) {
+  requirePermission_('fleetDashboard', 'удаление поездки');
+  ensureFleetTripsSheets_();
+
+  const id = String(tripId || '').trim();
+  if (!id) throw new Error('Не передан идентификатор поездки.');
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName('Поездки автопарк');
+  if (sh.getLastRow() < 2) throw new Error('Журнал поездок пуст.');
+
+  const ids = sh.getRange(2, 1, sh.getLastRow() - 1, 1).getValues();
+  for (var i = 0; i < ids.length; i++) {
+    if (String(ids[i][0] || '').trim() !== id) continue;
+    sh.deleteRow(i + 2);
+    return 'Поездка удалена.';
   }
 
-  return 'Поездка сохранена.';
+  throw new Error('Поездка не найдена.');
 }
 
 function getEmployeeAccumulationsMap_() {
