@@ -339,6 +339,7 @@ function syncSheetProtections() {
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const adminEmails = getActiveUsersWithPermission_('manageAccess');
+  const inventoryEmails = getActiveUsersWithPermission_('inventory');
   const storekeeperEmails = getActiveUsersWithPermission_('storekeeperDashboard');
   const fleetEmails = getActiveUsersWithPermission_('fleetDashboard');
 
@@ -359,7 +360,13 @@ function syncSheetProtections() {
   const adminOnlySheets = [ACCESS_ROLE_SHEET, ACCESS_USERS_SHEET];
 
   const extraEditorsBySheet = {};
-  storekeeperSheetNames.forEach(function (name) { extraEditorsBySheet[name] = storekeeperEmails; });
+  const inventorySheetNames = ['Журнал движения', 'Справочник', 'Остатки', 'Дашборд', 'Закреплено'];
+  inventorySheetNames.forEach(function (name) {
+    extraEditorsBySheet[name] = (extraEditorsBySheet[name] || []).concat(inventoryEmails);
+  });
+  storekeeperSheetNames.forEach(function (name) {
+    extraEditorsBySheet[name] = (extraEditorsBySheet[name] || []).concat(storekeeperEmails);
+  });
   fleetSheetNames.forEach(function (name) { extraEditorsBySheet[name] = fleetEmails; });
 
   ss.getSheets().forEach(function (sheet) {
@@ -381,7 +388,7 @@ function syncSheetProtections() {
     }
   });
 
-  return 'Листы защищены по ролям. Администраторов: ' + adminEmails.length + ', кладовщик/закупки: ' + storekeeperEmails.length + ', автопарк: ' + fleetEmails.length + '.';
+  return 'Листы защищены по ролям. Администраторов: ' + adminEmails.length + ', инвентаризация: ' + inventoryEmails.length + ', кладовщик/закупки: ' + storekeeperEmails.length + ', автопарк: ' + fleetEmails.length + '.';
 }
 
 function showAccessAdminPanel() {
@@ -1117,6 +1124,7 @@ function getManagementDashboardData(filters) {
  * =========================
  */
 function saveInventoryForm(payload) {
+  requirePermission_('inventory', 'проведение инвентаризации');
   const lock = LockService.getDocumentLock();
   lock.waitLock(30000);
 
