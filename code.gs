@@ -185,6 +185,17 @@ function getUserRoleEntries_() {
   }).filter(function (row) { return !!row.email; });
 }
 
+function getActiveUsersWithPermission_(permissionKey) {
+  const rolesMap = getAccessRolesMap_();
+  return getUserRoleEntries_()
+    .filter(function (row) {
+      if (!row.active) return false;
+      const roleInfo = rolesMap[row.role];
+      return !!(roleInfo && roleInfo.permissions && roleInfo.permissions[permissionKey]);
+    })
+    .map(function (row) { return row.email; });
+}
+
 function getCurrentUserAccess_() {
   const email = getCurrentUserEmail_();
   const rolesMap = getAccessRolesMap_();
@@ -327,20 +338,29 @@ function syncSheetProtections() {
   ensureAccessControlSheets_();
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const adminEmails = getUserRoleEntries_()
-    .filter(function (row) {
-      const roleInfo = getAccessRolesMap_()[row.role];
-      return row.active && roleInfo && roleInfo.permissions.manageAccess;
-    })
-    .map(function (row) { return row.email; });
+  const adminEmails = getActiveUsersWithPermission_('manageAccess');
+  const storekeeperEmails = getActiveUsersWithPermission_('storekeeperDashboard');
+  const fleetEmails = getActiveUsersWithPermission_('fleetDashboard');
 
   if (!adminEmails.length) throw new Error('Нет ни одного администратора с правом управления доступом.');
 
-  const protections = ss.getProtections(SpreadsheetApp.ProtectionType.SHEET);
-  const protectionMap = {};
-  protections.forEach(function (protection) {
-    protectionMap[protection.getRangeName() || protection.getDescription() || protection.getSheet().getName()] = protection;
-  });
+  const storekeeperSheetNames = [
+    'Номенклатура',
+    'Журнал движения',
+    'Справочник',
+    'Запросы номенклатуры',
+    'Остатки',
+    'Дашборд',
+    'Закреплено',
+    'Ответственные',
+    'История ответственности'
+  ];
+  const fleetSheetNames = ['Автопарк', 'ТО и ремонты', 'Поездки автопарк', 'Списания накоплений'];
+  const adminOnlySheets = [ACCESS_ROLE_SHEET, ACCESS_USERS_SHEET];
+
+  const extraEditorsBySheet = {};
+  storekeeperSheetNames.forEach(function (name) { extraEditorsBySheet[name] = storekeeperEmails; });
+  fleetSheetNames.forEach(function (name) { extraEditorsBySheet[name] = fleetEmails; });
 
   ss.getSheets().forEach(function (sheet) {
     const sheetName = sheet.getName();
@@ -348,16 +368,20 @@ function syncSheetProtections() {
     if (!protection) {
       protection = sheet.protect();
     }
-    protection.setDescription('Автозащита: редактирование только администраторами доступа');
+
+    const extraEditors = adminOnlySheets.indexOf(sheetName) === -1 ? (extraEditorsBySheet[sheetName] || []) : [];
+    const editors = Array.from(new Set(adminEmails.concat(extraEditors))).filter(function (email) { return !!email; });
+
+    protection.setDescription('Автозащита: редактирование по роли доступа');
     protection.setWarningOnly(false);
     try { protection.removeEditors(protection.getEditors()); } catch (e) {}
-    try { protection.addEditors(adminEmails); } catch (e) {}
+    try { if (editors.length) protection.addEditors(editors); } catch (e) {}
     if (protection.canDomainEdit && protection.canDomainEdit()) {
       protection.setDomainEdit(false);
     }
   });
 
-  return 'Листы защищены. Редактирование разрешено только администраторам: ' + adminEmails.join(', ');
+  return 'Листы защищены по ролям. Администраторов: ' + adminEmails.length + ', кладовщик/закупки: ' + storekeeperEmails.length + ', автопарк: ' + fleetEmails.length + '.';
 }
 
 function showAccessAdminPanel() {
