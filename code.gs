@@ -1,9 +1,28 @@
 function onOpen() {
-  ensureAccessControlSheets_();
+  try {
+    ensureAccessControlSheets_();
+  } catch (e) {
+    // Не блокируем открытие файла для пользователей без прав изменения служебных листов.
+  }
 
   const ui = SpreadsheetApp.getUi();
   const menu = ui.createMenu('Склад');
-  const access = getCurrentUserAccess_();
+  let access;
+  try {
+    access = getCurrentUserAccess_();
+  } catch (e) {
+    access = {
+      permissions: {
+        refreshAll: false,
+        inventory: false,
+        search: false,
+        storekeeperDashboard: false,
+        managementDashboard: false,
+        fleetDashboard: false,
+        manageAccess: false
+      }
+    };
+  }
 
   menu.addItem('Меню', 'showMainMenuPanel');
   if (access.permissions.refreshAll) menu.addItem('1. Обновить всё', 'refreshAll');
@@ -54,13 +73,17 @@ function getRoleSheetHeaders_() {
   })).concat([ACCESS_ROLE_COMMENT_HEADER]);
 }
 
-function getRoleColumnIndexes_(sheet) {
+function getRoleColumnIndexes_(sheet, allowRepair) {
+  if (allowRepair === undefined) allowRepair = true;
   const headers = getRoleSheetHeaders_();
   const currentLastCol = Math.max(sheet.getLastColumn(), 1);
   const currentHeader = sheet.getRange(1, 1, 1, currentLastCol).getValues()[0];
   const missing = headers.some(function (h) { return currentHeader.indexOf(h) === -1; });
 
   if (missing || currentHeader[0] !== 'Роль') {
+    if (!allowRepair) {
+      throw new Error('Некорректная структура листа "' + ACCESS_ROLE_SHEET + '". Откройте "Управление доступом" под администратором и восстановите заголовки.');
+    }
     const existing = sheet.getLastRow() >= 2 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, currentLastCol).getValues() : [];
     const byHeader = {};
     currentHeader.forEach(function (h, i) {
@@ -133,6 +156,16 @@ function ensureAccessControlSheets_() {
   }
 }
 
+function ensureAccessControlSheetsReadable_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const roleSheet = ss.getSheetByName(ACCESS_ROLE_SHEET);
+  const userSheet = ss.getSheetByName(ACCESS_USERS_SHEET);
+
+  if (!roleSheet || !userSheet) {
+    throw new Error('Служебные листы доступа не найдены. Администратор должен открыть "Управление доступом" и инициализировать таблицу.');
+  }
+}
+
 function getCurrentUserEmail_() {
   return normalizeEmail_(Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail());
 }
@@ -143,10 +176,10 @@ function toBoolAccess_(value) {
 }
 
 function getAccessRolesMap_() {
-  ensureAccessControlSheets_();
+  ensureAccessControlSheetsReadable_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(ACCESS_ROLE_SHEET);
-  const cols = getRoleColumnIndexes_(sheet);
+  const cols = getRoleColumnIndexes_(sheet, false);
   const lastRow = sheet.getLastRow();
   const map = {};
   if (lastRow < 2) return map;
@@ -169,7 +202,7 @@ function getAccessRolesMap_() {
 }
 
 function getUserRoleEntries_() {
-  ensureAccessControlSheets_();
+  ensureAccessControlSheetsReadable_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(ACCESS_USERS_SHEET);
   const lastRow = sheet.getLastRow();
