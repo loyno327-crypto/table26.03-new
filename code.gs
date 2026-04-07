@@ -192,6 +192,16 @@ function persistAccessSnapshot_() {
   PropertiesService.getScriptProperties().setProperty(ACCESS_SNAPSHOT_KEY, JSON.stringify(payload));
 }
 
+function ensureAccessControlSheetsReadable_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const roleSheet = ss.getSheetByName(ACCESS_ROLE_SHEET);
+  const userSheet = ss.getSheetByName(ACCESS_USERS_SHEET);
+
+  if (!roleSheet || !userSheet) {
+    throw new Error('Служебные листы доступа не найдены. Администратор должен открыть "Управление доступом" и инициализировать таблицу.');
+  }
+}
+
 function getCurrentUserEmail_() {
   return normalizeEmail_(Session.getActiveUser().getEmail() || Session.getEffectiveUser().getEmail());
 }
