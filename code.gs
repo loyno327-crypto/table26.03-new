@@ -453,7 +453,7 @@ function syncSheetProtections() {
   const adminOnlySheets = [ACCESS_ROLE_SHEET, ACCESS_USERS_SHEET];
 
   const extraEditorsBySheet = {};
-  const inventorySheetNames = ['Журнал движения', 'Справочник', 'Остатки', 'Дашборд', 'Закреплено'];
+  const inventorySheetNames = ['Журнал движения', 'Справочник', 'Запросы номенклатуры', 'Остатки', 'Дашборд', 'Закреплено'];
   inventorySheetNames.forEach(function (name) {
     extraEditorsBySheet[name] = (extraEditorsBySheet[name] || []).concat(inventoryEmails);
   });
