@@ -41,6 +41,7 @@ function onOpen() {
 }
 const ACCESS_ROLE_SHEET = 'Роли доступа';
 const ACCESS_USERS_SHEET = 'Пользователи и роли';
+const ACCESS_SNAPSHOT_KEY = 'ACCESS_CONTROL_SNAPSHOT_V1';
 const ACCESS_PERMISSION_FIELDS = [
   'menu',
   'inventory',
@@ -154,6 +155,41 @@ function ensureAccessControlSheets_() {
     }
     autoResize_(userSheet, 1, headers[0].length);
   }
+  persistAccessSnapshot_();
+}
+
+function ensureAccessControlSheetsReadable_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const roleSheet = ss.getSheetByName(ACCESS_ROLE_SHEET);
+  const userSheet = ss.getSheetByName(ACCESS_USERS_SHEET);
+
+  if (!roleSheet || !userSheet) {
+    throw new Error('Служебные листы доступа не найдены. Администратор должен открыть "Управление доступом" и инициализировать таблицу.');
+  }
+}
+
+function isPermissionDeniedError_(error) {
+  const message = String(error && error.message || error || '');
+  return message.indexOf('PERMISSION_DENIED') !== -1 || message.indexOf('Недостаточно прав') !== -1;
+}
+
+function getAccessSnapshot_() {
+  const raw = PropertiesService.getScriptProperties().getProperty(ACCESS_SNAPSHOT_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+function persistAccessSnapshot_() {
+  const payload = {
+    rolesMap: readAccessRolesFromSheet_(),
+    users: readUserRoleEntriesFromSheet_(),
+    updatedAt: new Date().toISOString()
+  };
+  PropertiesService.getScriptProperties().setProperty(ACCESS_SNAPSHOT_KEY, JSON.stringify(payload));
 }
 
 function ensureAccessControlSheetsReadable_() {
@@ -175,7 +211,7 @@ function toBoolAccess_(value) {
   return ['да', 'true', '1', 'yes', 'y'].indexOf(v) !== -1;
 }
 
-function getAccessRolesMap_() {
+function readAccessRolesFromSheet_() {
   ensureAccessControlSheetsReadable_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(ACCESS_ROLE_SHEET);
@@ -201,7 +237,18 @@ function getAccessRolesMap_() {
   return map;
 }
 
-function getUserRoleEntries_() {
+function getAccessRolesMap_() {
+  try {
+    return readAccessRolesFromSheet_();
+  } catch (e) {
+    if (!isPermissionDeniedError_(e)) throw e;
+    const snapshot = getAccessSnapshot_();
+    if (snapshot && snapshot.rolesMap) return snapshot.rolesMap;
+    throw new Error('Нет прав для чтения листа "' + ACCESS_ROLE_SHEET + '". Попросите администратора открыть "Управление доступом" и сохранить настройки.');
+  }
+}
+
+function readUserRoleEntriesFromSheet_() {
   ensureAccessControlSheetsReadable_();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(ACCESS_USERS_SHEET);
@@ -216,6 +263,17 @@ function getUserRoleEntries_() {
       comment: String(r[3] || '').trim()
     };
   }).filter(function (row) { return !!row.email; });
+}
+
+function getUserRoleEntries_() {
+  try {
+    return readUserRoleEntriesFromSheet_();
+  } catch (e) {
+    if (!isPermissionDeniedError_(e)) throw e;
+    const snapshot = getAccessSnapshot_();
+    if (snapshot && snapshot.users) return snapshot.users;
+    throw new Error('Нет прав для чтения листа "' + ACCESS_USERS_SHEET + '". Попросите администратора открыть "Управление доступом" и сохранить настройки.');
+  }
 }
 
 function getActiveUsersWithPermission_(permissionKey) {
@@ -317,6 +375,7 @@ function saveAccessRole(payload) {
   const row = [roleName].concat(permissionValues).concat([comment]);
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setValues([row]);
   autoResize_(sheet, 1, row.length);
+  persistAccessSnapshot_();
   return 'Роль добавлена: ' + roleName;
 }
 
@@ -362,6 +421,7 @@ function saveAccessControlData(payload) {
     sheet.getRange(2, 1, prepared.length, 4).setValues(prepared);
   }
   autoResize_(sheet, 1, 4);
+  persistAccessSnapshot_();
   syncSheetProtections();
   return 'Доступы обновлены. Пользователей: ' + prepared.length;
 }
